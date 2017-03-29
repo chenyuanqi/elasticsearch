@@ -7,6 +7,13 @@ use Illuminate\Support\ServiceProvider;
 class SearchServiceProvider extends ServiceProvider
 {
     /**
+     * Indicates if loading of the provider is deferred.
+     *
+     * @var bool
+     */
+    protected $defer = false;
+
+    /**
      * Bootstrap the application services.
      *
      * @return void
@@ -15,10 +22,6 @@ class SearchServiceProvider extends ServiceProvider
     {
         $this->publishes([
             __DIR__.'/config/elasticsearch.php' => config_path('elasticsearch.php'),
-        ], 'config');
-
-        $this->publishes([
-            __DIR__.'/Commands/ElasticsearchService.php' => app_path('Console/Commands/ElasticsearchService.php'),
         ], 'config');
     }
 
@@ -29,6 +32,8 @@ class SearchServiceProvider extends ServiceProvider
      */
     public function register()
     {
-
+        $this->commands([
+           Commands\ElasticsearchService::class
+        ]);
     }
 }
