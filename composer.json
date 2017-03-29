@@ -1,0 +1,17 @@
+{
+    "name": "chenyuanqi/elasticsearch-service",
+    "type": "library",
+    "description": "elasticsearch laravel service",
+    "keywords": ["elasticsearch laravel"],
+    "license": "MIT",
+    "require": {
+        "php": ">=5.5.0",
+        "laravel/framework": "5.1.*",
+        "elasticsearch/elasticsearch": "~2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "chenyuanqi\\elasticsearch-service\\": "src/"
+        }
+    }
+}
