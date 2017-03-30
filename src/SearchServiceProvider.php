@@ -32,8 +32,14 @@ class SearchServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        // 注册命令文件
         $this->commands([
            Commands\ElasticsearchService::class
         ]);
+
+        // 注册 Search Facade
+        $this->app->bind('Search', function ($app) {
+            return new \chenyuanqi\elasticSearchService\Builder();
+        });
     }
 }

@@ -1,9 +1,5 @@
 <?php
 
-/**
- * elastic 应用端 请求内部请求模块
- *
- */
 namespace chenyuanqi\elasticSearchService;
 
 use Elasticsearch\ClientBuilder;
@@ -11,54 +7,27 @@ use Config;
 
 class Builder
 {
-    /**
-     * elastic客户端连接
-     */
-    protected $client;
-
-    /**
-     * 索引库名
-     */
-    protected $index;
-
-    /**
-     * 索引类型
-     */
-    protected $type;
-
-    /**
-     * elastic 配置及索引配置
-     */
-    public $config, $indexConfig;
+    protected $indexes = [];
 
     public function __construct()
     {
-        $hosts        = Config::get('elasticsearch.hosts', []);
-        $this->client = ClientBuilder::create()->setHosts($hosts)->build();
     }
 
-    /**
-     * 获取建立连接的客户端
-     *
-     * @return \Elasticsearch\Client
-     */
-    public function getClient()
+    public function index($index = null)
     {
-        return $this->client;
+        if (!$index) {
+            $index = Config::get('elasticsearch.default_index', 'default');
+        }
+
+        if (!isset($this->indexes[$index])) {
+            $this->indexes[$index] = new Query($index);
+        }
+
+        return $this->indexes[$index];
     }
 
-    /**
-     * 设置 elastic 链接
-     *
-     * @param string $configName 配置名
-     *
-     * @return void
-     */
-    protected function setConfig($configName)
+    public function __call($method, array $parameters)
     {
-        $this->config      = Config::get('elasticsearch.'.$configName, []);
-        $this->indexConfig = $this->config['index'];
-        $this->index       = $this->indexConfig['indices'];
-        $this->type        = $this->indexConfig['type'];
+        return call_user_func_array([$this->index(), $method], $parameters);
     }
 }

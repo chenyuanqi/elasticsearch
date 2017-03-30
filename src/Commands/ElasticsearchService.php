@@ -126,7 +126,7 @@ class ElasticsearchService extends Command
         $this->info('批量写入数据开始');
         $index = new Index($this->name);
         $model    = new $index->config['model'];
-        $limit= array_get($index->config, 'limitNum', 1000);
+        $limit= array_get($index->config, 'limit', 1000);
 
         $model->chunk($limit, function ($datas){
             $params = ['body' => []];

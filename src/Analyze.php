@@ -1,12 +1,8 @@
 <?php
 
-/**
- * elastic 分词调用
- *
- */
 namespace chenyuanqi\elasticSearchService;
 
-class Analyze extends Builder
+class Analyze extends Base
 {
     public function __construct()
     {
@@ -14,7 +10,7 @@ class Analyze extends Builder
     }
 
     /**
-     * 调用分词器
+     * 调用 ik 分词器
      *
      * @param string $word     文本
      * @param string $analyzer 选择分析器, ik_smart 或 ik_max_words
@@ -27,7 +23,7 @@ class Analyze extends Builder
             return [];
         }
 
-        $result = $this->client->indices()->analyze([
+        $result = $this->getClient()->indices()->analyze([
             'index'    => $this->index,
             'analyzer' => $analyzer,
             'text'     => $word
