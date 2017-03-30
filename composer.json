@@ -18,15 +18,17 @@
         "issues": "https://github.com/chenyuanqi/elasticsearch-service/issues"
     },
     "prefer-stable": true,
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "require": {
         "php": ">=5.5.0",
-        "laravel/framework": "5.1.*",
+        "illuminate/support": "~5.1",
         "elasticsearch/elasticsearch": "~2.0"
     },
     "require-dev": {
-        "phpunit/phpunit"     : "@stable",
-        "fabpot/php-cs-fixer" : "@stable"
+        "phpunit/phpunit"     : "@stable"
+    },
+    "suggest": {
+        "elasticsearch/elasticsearch": "Required for ElasticSearch driver."
     },
     "autoload": {
         "psr-4": {
