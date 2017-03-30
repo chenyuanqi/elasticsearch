@@ -1,6 +1,6 @@
 <?php
 
-namespace Mmanos\Search;
+namespace chenyuanqi\elasticSearchService;
 
 class Facade extends \Illuminate\Support\Facades\Facade
 {
