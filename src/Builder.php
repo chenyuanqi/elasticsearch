@@ -6,8 +6,8 @@
  */
 namespace chenyuanqi\elasticSearchService;
 
-use Config;
 use Elasticsearch\ClientBuilder;
+use Config;
 
 class Builder
 {
@@ -33,7 +33,7 @@ class Builder
 
     public function __construct()
     {
-        $hosts        = Config::get('essearch.hosts', []);
+        $hosts        = Config::get('elasticsearch.hosts', []);
         $this->client = ClientBuilder::create()->setHosts($hosts)->build();
     }
 

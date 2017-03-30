@@ -6,8 +6,6 @@
  */
 namespace chenyuanqi\elasticSearchService;
 
-use chenyuanqi\elasticSearchService\Builder;
-
 class Index extends Builder
 {
     public $indexConfig;

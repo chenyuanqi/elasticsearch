@@ -6,8 +6,6 @@
  */
 namespace chenyuanqi\elasticSearchService;
 
-use chenyuanqi\elasticSearchService\Builder;
-
 class Analyze extends Builder
 {
     public function __construct()
@@ -18,25 +16,23 @@ class Analyze extends Builder
     /**
      * 调用分词器
      *
-     * @param string $text     文本
-     * @param string $analyzer 选择分析器
+     * @param string $word     文本
+     * @param string $analyzer 选择分析器, ik_smart 或 ik_max_words
      *
      * @return array
      */
-    public function ikAnalyze($text, $index = 'index', $analyzer = 'ik_smart')
+    public function ikAnalyze($word, $analyzer = 'ik_smart')
     {
-        if (!$text) {
+        if (!$word) {
             return [];
         }
-        $items = $this->client->indices()->analyze([
-            'index'    => $index,
-            'analyzer' => $analyzer,
-            'text'     => $text
-        ]);
-        $res   = array_map(function ($item){
-            return $item['token'];
-        }, $items['tokens']);
 
-        return $res;
+        $result = $this->client->indices()->analyze([
+            'index'    => $this->index,
+            'analyzer' => $analyzer,
+            'text'     => $word
+        ]);
+
+        return $result['tokens']['token'] ? : [];
     }
 }

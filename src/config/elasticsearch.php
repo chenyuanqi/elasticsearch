@@ -20,7 +20,7 @@ return [
             'type'    => 'test', // 索引类型
             'id'      => 'id',   // ID 来源
             'fields'  => [       // 索引字段
-                                 'title'
+                'title'
             ]
         ],
         // 基础配置
@@ -48,5 +48,7 @@ return [
                 ]
             ]
         ],
+
     ],
+
 ];

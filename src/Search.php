@@ -8,8 +8,6 @@ namespace chenyuanqi\elasticSearchService;
 
 use Config;
 
-use chenyuanqi\elasticSearchService\Builder;
-
 class Search extends Builder
 {
     /**
@@ -18,25 +16,25 @@ class Search extends Builder
     public function __construct($indexName = "")
     {
         parent::__construct();
-        $this->getConfig($indexName);
+        $this->setConfig($indexName);
     }
 
     /**
      * 搜索搜索调用
      *
      * @param string $word 输入查询词
-     * @param int    $pn   页数
+     * @param int    $page 页码
      * @param int    $size 每页条数
      *
      * @return array
      */
-    public function search($word, $pn = 0, $size = 10)
+    public function search($word, $page = 0, $size = 10)
     {
         if (!$word) {
             return [];
         }
 
-        $from  = $pn * $size;
+        $from  = $page * $size;
         $items = $this->client->search([
             'index' => $this->index,
             'type'  => $this->type,
@@ -59,18 +57,18 @@ class Search extends Builder
      *
      * @param string $word   输入查询词
      * @param array  $fields 输入查询字段
-     * @param int    $pn     页数
+     * @param int    $page   页码
      * @param int    $size   每页条数
      *
      * @return array
      */
-    public function multiSearch($word, $fields, $pn = 0, $size = 10)
+    public function multiSearch($word, $fields, $page = 0, $size = 10)
     {
         if (!$word) {
             return [];
         }
 
-        $from  = $pn * $size;
+        $from  = $page * $size;
         $items = $this->client->search([
             'index' => $this->index,
             'type'  => $this->type,
@@ -91,22 +89,26 @@ class Search extends Builder
     }
 
     /**
-     * 结果输出整理
+     * 格式化输出结果
      *
-     * @param array $items 输入列表
+     * @param array $output 输出结果
      *
      * @return array
      */
-    public function searchOutputFomat($items)
+    public function outputFormat($output)
     {
-        $items = $items['hits']['hits'];
-        $res   = [];
-        foreach ($items as $item) {
-            $data        = $item['_source'];
-            $data['_id'] = $item['_id'];
-            $res[]       = $data;
+        if(!$output['hits']['total']) {
+            return [];
         }
 
-        return $res;
+        // 格式化处理
+        $result = collect($output['hits']['hits'])->map(function($item) {
+            $item['_source']['_id'] = $item['_id'];
+            return $item['_source'];
+        })->toArray();
+        // 总记录数
+        $result['total'] = $output['hits']['total'];
+
+        return $result;
     }
 }
