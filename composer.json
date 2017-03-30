@@ -1,17 +1,41 @@
 {
     "name": "chenyuanqi/elasticsearch-service",
-    "type": "library",
     "description": "elasticsearch laravel service",
-    "keywords": ["elasticsearch laravel"],
+    "type": "library",
     "license": "MIT",
+    "keywords": [
+        "laravel",
+        "elasticsearch",
+        "search"
+    ],
+    "authors": [
+        {
+            "name": "chenyuanqi",
+            "email": "chenyuanqi@chaoqiankj.com"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/chenyuanqi/elasticsearch-service/issues"
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev",
     "require": {
         "php": ">=5.5.0",
         "laravel/framework": "5.1.*",
         "elasticsearch/elasticsearch": "~2.0"
     },
+    "require-dev": {
+        "phpunit/phpunit"     : "@stable",
+        "fabpot/php-cs-fixer" : "@stable"
+    },
     "autoload": {
         "psr-4": {
             "chenyuanqi\\elasticsearch-service\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "chenyuanqi\\elasticsearch-service\\": "tests/"
         }
     }
 }
