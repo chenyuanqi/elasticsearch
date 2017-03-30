@@ -16,9 +16,9 @@ class Analyze extends Builder
     }
 
     /**
-     * 分词器调用
+     * 调用分词器
      *
-     * @param string $text     输入文本
+     * @param string $text     文本
      * @param string $analyzer 选择分析器
      *
      * @return array

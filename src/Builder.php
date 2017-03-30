@@ -38,6 +38,16 @@ class Builder
     }
 
     /**
+     * 获取建立连接的客户端
+     *
+     * @return \Elasticsearch\Client
+     */
+    public function getClient()
+    {
+        return $this->client;
+    }
+
+    /**
      * 设置 elastic 链接
      *
      * @param string $configName 配置名
