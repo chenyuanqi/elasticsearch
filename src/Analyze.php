@@ -2,7 +2,7 @@
 
 namespace chenyuanqi\elasticSearchService;
 
-class Analyze extends Base
+class Analyze extends Query
 {
     public function __construct()
     {

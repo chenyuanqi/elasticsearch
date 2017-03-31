@@ -2,7 +2,6 @@
 
 namespace chenyuanqi\elasticSearchService;
 
-use Elasticsearch\ClientBuilder;
 use Config;
 
 class Builder

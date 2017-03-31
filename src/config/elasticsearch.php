@@ -19,8 +19,8 @@ return [
         'index'    => [
             'indices' => 'default', // 索引库
             'type'    => 'default', // 索引类型
-            'id'      => 'id',   // ID 来源
-            'fields'  => [       // 索引字段
+            'id'      => 'id',      // ID 来源
+            'fields'  => [          // 索引字段
                 'title'
             ]
         ],

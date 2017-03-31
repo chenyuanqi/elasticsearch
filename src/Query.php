@@ -2,123 +2,397 @@
 
 namespace chenyuanqi\elasticSearchService;
 
-use App, Input;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Elasticsearch\ClientBuilder;
 
 class Query
 {
     /**
-     * The search index instance.
+     * 客户端链接
      *
-     * @var \Mmanos\Search\Index
+     * @var
+     */
+    protected static $client;
+
+    /**
+     * 索引配置
+     *
+     * @var
+     */
+    protected $config;
+
+    /**
+     * 索引名称
+     *
+     * @var
      */
     protected $index;
 
     /**
-     * The raw query used by the current search index driver.
+     * 类型名称
      *
-     * @var mixed
+     * @var
      */
-    protected $query;
+    protected $type;
 
     /**
-     * The search conditions for the query.
+     * 查询条件
+     *
+     * @var
+     */
+    protected $where = [];
+
+    /**
+     * 查询结果
+     *
+     * @var
+     */
+    protected $output;
+
+    /**
+     * 查询字段
      *
      * @var array
      */
-    protected $conditions = [];
+    protected $columns = ['*'];
 
     /**
-     * The columns that should be returned.
-     *
-     * @var array
-     */
-    protected $columns;
-
-    /**
-     * The maximum number of records to return.
+     * 查询限制数量
      *
      * @var int
      */
-    protected $limit;
+    protected $limit = 10;
 
     /**
-     * The number of records to skip.
+     * 查询偏移数量
      *
      * @var int
      */
-    protected $offset;
+    protected $offset = 0;
 
     /**
-     * Any user defined callback functions to help manipulate the raw
-     * query instance.
+     * 获取配置，建立链接
      *
-     * @var array
+     * @param $index
      */
-    protected $callbacks = [];
-
-    /**
-     * Flag to remember if callbacks have already been executed.
-     * Prevents multiple executions.
-     *
-     * @var bool
-     */
-    protected $callbacks_executed = false;
-
-    protected static $client;
-
     public function __construct($index)
     {
-        $this->index = $index;
+        $config       = \Config::get('elasticsearch.'.$index, []);
+        $this->config = $config;
+        $this->index  = $config['index']['indices'];
+        $this->type   = $config['index']['type'];
+
         if (!static::$client) {
-            $host = Config::get('elasticsearch.'.$index.'.host', []);
-            static::$client = ClientBuilder::create()->setHosts($host)->build();
+            static::$client = ClientBuilder::create()->setHosts($config['host'])->build();
         }
     }
 
-    public function where($field, $value)
+    /**
+     * 获取链接 (外部使用)
+     *
+     * @return mixed
+     */
+    public function getClient()
     {
-        $this->query = $this->index->addConditionToQuery($this->query, [
-            'field'    => $field,
-            'value'    => $value,
-            'required' => true,
-            'filter'   => true,
-        ]);
-
-        return $this;
+        return static::$client;
     }
 
-    public function search($field, $value, array $options = [])
+    /**
+     * 创建索引
+     *
+     * @return array
+     */
+    public function createMapping()
     {
-        $this->query = $this->index->addConditionToQuery($this->query, [
-            'field'      => $field,
-            'value'      => $value,
-            'required'   => array_get($options, 'required', true),
-            'prohibited' => array_get($options, 'prohibited', false),
-            'phrase'     => array_get($options, 'phrase', false),
-            'fuzzy'      => array_get($options, 'fuzzy', null),
-        ]);
+        try {
+            $result = self::$client->indices()->create([
+                'index' => $this->index,
+                'body'  => [
+                    'mappings' => $this->config['mappings']
+                ]
+            ]);
 
-        return $this;
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
-    public function addCallback($callback, $driver = null)
+    /**
+     * 更新索引
+     *
+     * @return array
+     */
+    public function updateMapping()
     {
-        if (!empty($driver)) {
-            if (is_array($driver)) {
-                if (!in_array($this->index->driver, $driver)) {
-                    return $this;
-                }
-            } else if ($driver != $this->index->driver) {
-                return $this;
-            }
+        try {
+            $result = self::$client->indices()->putMapping([
+                'index' => $this->index,
+                'type'  => $this->type,
+                'body'  => [
+                    'mappings' => $this->config['mappings']
+                ]
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 删除索引
+     *
+     * @return array
+     */
+    public function deleteMapping()
+    {
+        try {
+            $result = self::$client->indices()->deleteMapping([
+                'index' => $this->index,
+                'type'  => $this->type,
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 新增数据
+     *
+     * @param $body
+     * @param $id
+     *
+     * @return array
+     */
+    public function insert($body, $id = '')
+    {
+        try {
+            $result = self::$client->create([
+                'index' => $this->index,
+                'type'  => $this->type,
+                'id'    => $id,
+                'body'  => $this->filter($body)
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 根据 ID 更新数据 (局部更新)
+     *
+     * @param array  $body
+     * @param string $id
+     * @param int    $times 失败重试次数
+     *
+     * @return array
+     */
+    public function updateById(array $body, $id, $times = 3)
+    {
+        try {
+            $result = self::$client->update([
+                'index' => $this->index,
+                'type'  => $this->type,
+                'id'    => $id,
+                'body'  => [
+                    'script' => 'ctx._source.counter += count',
+                    'params' => [
+                        'count' => $times
+                    ],
+                    'doc' => $this->filter($body)
+                ]
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 根据查询条件更新数据
+     *
+     * @param array $body
+     * @param int   $times
+     *
+     * @return array
+     */
+    public function update(array $body, $times = 3)
+    {
+        if (!$this->where) {
+            return [];
         }
 
-        $this->callbacks[] = $callback;
+        try {
+            $result = self::$client->updateByQuery([
+                'index' => $this->index,
+                'type'  => $this->type,
+                'body'  => [
+                    $this->where,
+                    'script' => 'ctx._source.counter += count',
+                    'params' => [
+                        'count' => $times
+                    ],
+                    'doc' => $this->filter($body)
+                ]
+            ]);
 
-        return $this;
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
+    /**
+     * 新增或更新数据
+     *
+     * @param        $body
+     * @param string $id
+     * @param int    $times 失败重试次数
+     *
+     * @return array
+     */
+    public function insertOrUpdate($body, $id = '', $times = 3)
+    {
+        try {
+            $result = self::$client->update([
+                'index' => $this->index,
+                'type'  => $this->type,
+                'id'    => $id,
+                'body'  => [
+                    'script' => 'ctx._source.counter += count',
+                    'params' => [
+                        'count' => $times
+                    ],
+                    'upsert' => $this->filter($body)
+                    ]
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 根据 ID 删除数据
+     *
+     * @param $id
+     *
+     * @return array
+     */
+    public function deleteById($id)
+    {
+        try {
+            $result = self::$client->delete([
+                'index' => $this->index,
+                'type'  => $this->type,
+                'id'    => $id
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 根据查询条件删除数据
+     *
+     * @return array
+     */
+    public function delete()
+    {
+        if (!$this->where) {
+            return [];
+        }
+
+        try {
+            $result = self::$client->deleteByQuery([
+                'index' => $this->index,
+                'type'  => $this->type,
+                'body'  => $this->where
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 清空索引
+     *
+     * @return array
+     */
+    public function truncate()
+    {
+        try {
+            $result = self::$client->delete([
+                'index' => $this->index
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 查找记录
+     *
+     * @param $id
+     *
+     * @return array
+     */
+    public function find($id)
+    {
+        try {
+            $result = self::$client->get([
+                'index' => $this->index,
+                'type'  => $this->type,
+                'id'    => $id
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 选择展示字段，默认所有
+     *
+     * @param array $columns
+     *
+     * @return $this
+     */
     public function select($columns = ['*'])
     {
         $this->columns = is_array($columns) ? $columns : func_get_args();
@@ -126,7 +400,114 @@ class Query
         return $this;
     }
 
-    public function limit($limit, $offset = 0)
+    /**
+     * 构造 match query 查询条件
+     *
+     * @param $type
+     * @param $field
+     * @param $value
+     *
+     * @return $this
+     */
+    public function match($field, $value = '', $type = '_all')
+    {
+        switch ($type) {
+            case 'match':
+                $where = [
+                    'query' => [
+                        'match' => [
+                            $field => $value
+                        ]
+                    ]
+                ];
+                break;
+
+            case 'multi_match':
+                $where = [
+                    'query' => [
+                        'multi_match' => [
+                            'type'   => 'most_fields',
+                            'fields' => $field,
+                            'query'  => $value
+                        ]
+                    ]
+                ];
+                break;
+
+            default:
+                $where = [
+                    'query' => [
+                        'match' => [
+                            '_all' => $field
+                        ]
+                    ]
+                ];
+                break;
+        }
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 构造 bool query 查询条件
+     *
+     * @param $type
+     * @param $field
+     * @param $value
+     *
+     * @return $this
+     */
+    public function bool($field, $value, $type = 'must')
+    {
+        $where = [
+            'query' => [
+                'bool' => [
+                    $type => [
+                        'term' => [$field => $value]
+                    ]
+                ]
+            ]
+        ];
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 构造 range query 查询条件
+     * @param     $field
+     * @param int $min
+     * @param int $max
+     *
+     * @return $this
+     */
+    public function range($field, $min = 0, $max = 100)
+    {
+        $where = [
+            'query' => [
+                'range' => [
+                    $field => [
+                        ['gte' => $min],
+                        ['lt'  => $max]
+                    ]
+                ]
+            ]
+        ];
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 获取分页参数
+     *
+     * @param int $limit
+     * @param int $offset
+     *
+     * @return $this
+     */
+    public function limit($limit = 10, $offset = 0)
     {
         $this->limit  = $limit;
         $this->offset = $offset;
@@ -134,87 +515,71 @@ class Query
         return $this;
     }
 
-    public function delete()
+    /**
+     * 执行查询
+     *
+     * @return $this
+     */
+    public function search()
     {
-        $this->columns = null;
-        $results       = $this->get();
+        $this->output = self::$client->search([
+            'index' => $this->index,
+            'type'  => $this->type,
+            'body'  => $this->where,
+            'from'  => $this->limit,
+            'size'  => $this->offset
+        ]);
 
-        foreach ($results as $result) {
-            $this->index->delete(array_get($result, 'id'));
-        }
-    }
-
-    public function paginate($num = 10)
-    {
-        $page = (int)Input::get('page', 1);
-
-        $this->limit($num, ($page - 1) * $num);
-
-        return new LengthAwarePaginator($this->get(), $this->count(), $num, $page);
-    }
-
-    public function count()
-    {
-        $this->executeCallbacks();
-
-        return $this->index->runCount($this->query);
+        return $this;
     }
 
     /**
-     * Execute the current query and return the results.
+     * 查询命中总数量
+     *
+     * @return int
+     */
+    public function count()
+    {
+        return isset($this->output['hits']['total']) ? $this->output['hits']['total'] : 0;
+    }
+
+    /**
+     * 过滤字段
+     *
+     * @param array $body
      *
      * @return array
      */
-    public function get()
+    public function filter(array $body)
     {
-        $options = [];
-        if ($this->columns) {
-            $options['columns'] = $this->columns;
+        if (!$body) {
+            return [];
         }
 
-        if ($this->limit) {
-            $options['limit']  = $this->limit;
-            $options['offset'] = $this->offset;
-        }
-
-        $this->executeCallbacks();
-
-        $results = $this->index->runQuery($this->query, $options);
-
-        if ($this->columns && !in_array('*', $this->columns)) {
-            $new_results = [];
-            foreach ($results as $result) {
-                $new_result = [];
-                foreach ($this->columns as $field) {
-                    if (array_key_exists($field, $result)) {
-                        $new_result[$field] = $result[$field];
-                    }
-                }
-                $new_results[] = $new_result;
-            }
-            $results = $new_results;
-        }
-
-        return $results;
+        return collect($body)->only($this->config['index']['fields'])->all();
     }
 
     /**
-     * Execute any callback functions. Only execute once.
+     * 格式化输出结果
      *
-     * @return void
+     * @param array $output 输出结果
+     *
+     * @return array
      */
-    protected function executeCallbacks()
+    public function outputFormat()
     {
-        if ($this->callbacks_executed) {
-            return;
+        if (!$this->output['hits']['total']) {
+            return [];
         }
+        // 格式化处理
+        $result = collect($this->output['hits']['hits'])->map(function ($item){
+            $item['_source']['_id'] = $item['_id'];
 
-        $this->callbacks_executed = true;
+            return $item['_source'];
+        })->toArray();
+        // 总记录数
+        $result['total'] = $this->output['hits']['total'];
 
-        foreach ($this->callbacks as $callback) {
-            if ($q = call_user_func($callback, $this->query)) {
-                $this->query = $q;
-            }
-        }
+        return $result;
     }
 }
