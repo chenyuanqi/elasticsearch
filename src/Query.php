@@ -612,8 +612,6 @@ class Query
     /**
      * 格式化输出结果
      *
-     * @param array $output 输出结果
-     *
      * @return array
      */
     public function outputFormat()
