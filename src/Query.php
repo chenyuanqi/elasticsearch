@@ -403,9 +403,9 @@ class Query
     /**
      * 构造 match query 查询条件
      *
-     * @param $type
      * @param $field
      * @param $value
+     * @param string $type 类型 (_all, match, multi_match)
      *
      * @return $this
      */
@@ -450,11 +450,33 @@ class Query
     }
 
     /**
-     * 构造 bool query 查询条件
+     * 构造 term query 查询条件
      *
-     * @param $type
      * @param $field
      * @param $value
+     *
+     * @return $this
+     */
+    public function term($field, $value)
+    {
+        $where = [
+            'query' => [
+                'term' => [
+                    $field => $value
+                ]
+            ]
+        ];
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 构造 bool query 查询条件
+     *
+     * @param $field
+     * @param $value
+     * @param string $type 类型 (must, must_not, should, filter)
      *
      * @return $this
      */
@@ -476,21 +498,44 @@ class Query
 
     /**
      * 构造 range query 查询条件
-     * @param     $field
-     * @param int $min
-     * @param int $max
+     * @param string $field
+     * @param array  $range          范围
+     * @param array  $parameter      范围对应的 query 符号参数
+     * @param array  $extraParameter 额外参数, e.g. ["format" =>"dd/MM/yyyy||yyyy"] 或 ["time_zone" => "+01:00"]
      *
      * @return $this
      */
-    public function range($field, $min = 0, $max = 100)
+    public function range($field, $range = [0, 100], $parameter = ['gte', 'lte'], $extraParameter = [])
     {
         $where = [
             'query' => [
                 'range' => [
                     $field => [
-                        ['gte' => $min],
-                        ['lt'  => $max]
+                        [$parameter[0] => $range[0]],
+                        [$parameter[1] => $range[1]]
                     ]
+                ]
+            ]
+        ];
+        $extraParameter && array_push($where['query']['range'][$field], $extraParameter);
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 包含 ID 查询
+     *
+     * @param  array $ids
+     *
+     * @return $this
+     */
+    public function ids(array $ids)
+    {
+        $where = [
+            'query' => [
+                'ids' => [
+                    'values' => $ids
                 ]
             ]
         ];
@@ -518,17 +563,22 @@ class Query
     /**
      * 执行查询
      *
+     * @param  boolean $paging 是否分页
      * @return $this
      */
-    public function search()
+    public function search($paging = true)
     {
-        $this->output = self::$client->search([
+        $params = [
             'index' => $this->index,
             'type'  => $this->type,
-            'body'  => $this->where,
+            'body'  => $this->where
+        ];
+        // 默认增加分页参数
+        $paging && array_push($params, [
             'from'  => $this->limit,
             'size'  => $this->offset
         ]);
+        $this->output = self::$client->search($params);
 
         return $this;
     }
