@@ -15,21 +15,21 @@ This package provides a unified API across a variety of different full text sear
 ## Install
  You can edit composer.json file, in the require object:
  ```json
-"chenyuanqi/elasticsearch-service": "dev-master"
+"chenyuanqi/elasticsearch": "dev-master"
 ```
 After that, run composer update to install this package.
 Add now, the service provider to app/config/app.php, within the providers array.
 ```php
 'providers' => [
 	// elasticsearch service
-	'chenyuanqi\elasticsearch-service\SearchServiceProvider::class',
+	chenyuanqi\elasticsearch\SearchServiceProvider::class,
 ],
 ```
 Add a class alias to app/config/app.php, within the aliases array.
 ```php
 'aliases' => [
 	// elasticsearch service facade
-	'Search' => 'chenyuanqi\elasticsearch-service\Facade',
+	'Search' => chenyuanqi\elasticsearch\Facade::class,
 ],
 ```
 ## Configure

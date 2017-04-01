@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use chenyuanqi\elasticSearchService\Builder;
+use chenyuanqi\elasticsearch\Builder;
 
 /**
  * Elasticsearch Service 命令行

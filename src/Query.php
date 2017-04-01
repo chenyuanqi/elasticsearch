@@ -1,6 +1,6 @@
 <?php
 
-namespace chenyuanqi\elasticSearchService;
+namespace chenyuanqi\elasticsearch;
 
 use Elasticsearch\ClientBuilder;
 

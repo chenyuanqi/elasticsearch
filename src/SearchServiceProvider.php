@@ -1,6 +1,6 @@
 <?php
 
-namespace chenyuanqi\elasticSearchService;
+namespace chenyuanqi\elasticsearch;
 
 use Illuminate\Support\ServiceProvider;
 
@@ -39,7 +39,7 @@ class SearchServiceProvider extends ServiceProvider
 
         // 注册 Search Facade
         $this->app->bind('Search', function ($app) {
-            return new \chenyuanqi\elasticSearchService\Builder();
+            return new \chenyuanqi\elasticsearch\Builder();
         });
     }
 }
