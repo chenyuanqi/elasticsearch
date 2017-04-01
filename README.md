@@ -7,15 +7,19 @@ This package provides a unified API across a variety of different full text sear
 ├── config  
 │   └── elasticsearch.php  
 ├── Analyze.php  
-├── Builder.php  
-├── Facade.php  
+├── Builder.php   
 ├── Query.php  
+├── SearchFacade.php  
 └── SearchServiceProvider.php  
 
 ## Install
  You can edit composer.json file, in the require object:
  ```json
 "chenyuanqi/elasticsearch": "dev-master"
+```
+Or use composer command:
+```bash
+composer require chenyuanqi/elasticsearch
 ```
 After that, run composer update to install this package.
 Add now, the service provider to app/config/app.php, within the providers array.
@@ -29,7 +33,7 @@ Add a class alias to app/config/app.php, within the aliases array.
 ```php
 'aliases' => [
 	// elasticsearch service facade
-	'Search' => chenyuanqi\elasticsearch\Facade::class,
+	'Search' => chenyuanqi\elasticsearch\SearchFacade::class,
 ],
 ```
 ## Configure

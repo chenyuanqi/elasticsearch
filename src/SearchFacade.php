@@ -2,7 +2,7 @@
 
 namespace chenyuanqi\elasticsearch;
 
-class Facade extends \Illuminate\Support\Facades\Facade
+class SearchFacade extends \Illuminate\Support\Facades\Facade
 {
     /**
      * 注册 Search Facade
@@ -11,6 +11,6 @@ class Facade extends \Illuminate\Support\Facades\Facade
      */
     protected static function getFacadeAccessor()
     {
-        return 'Search';
+        return 'search';
     }
 }

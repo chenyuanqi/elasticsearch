@@ -13,6 +13,8 @@ class Builder
      */
     protected static $indexes = [];
 
+    protected static $index = '';
+
     public function __construct()
     {
     }
@@ -26,27 +28,29 @@ class Builder
      */
     public static function index($index = null)
     {
-        if (!$index) {
-            $index = Config::get('elasticsearch.default_index', 'default');
+        if(!$index && !self::$index) {
+            self::$index = Config::get('elasticsearch.default_index', 'default');
+        } elseif($index) {
+            self::$index = $index;
         }
 
-        if (!isset(static::$indexes[$index])) {
-            static::$indexes[$index] = new Query($index);
+        if (!isset(static::$indexes[self::$index ])) {
+            static::$indexes[self::$index ] = new Query(self::$index );
         }
 
-        return static::$indexes[$index];
+        return static::$indexes[self::$index ];
     }
 
     /**
      * 静态方法请求 Query
      *
      * @param       $method
-     * @param array $parameters
+     * @param array $arguments
      *
      * @return mixed
      */
-    public static function __callStatic($method, array $parameters)
+    public function __call($method, array $arguments)
     {
-        return call_user_func_array([self::index(), $method], $parameters);
+        return call_user_func_array([self::index(), $method], $arguments);
     }
 }

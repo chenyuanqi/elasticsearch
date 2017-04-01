@@ -212,7 +212,7 @@ class Query
                 'type'  => $this->type,
                 'body'  => $this->filter($body)
             ];
-            $id && array_push($params, ['id' => $id]);
+            $id && $params['id'] = $id;
 
             return self::$client->create($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
@@ -382,11 +382,9 @@ class Query
     public function truncate()
     {
         try {
-            $result = self::$client->delete([
+            return self::$client->indices()->delete([
                 'index' => $this->index
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             return [];
         } catch (\Exception $e) {

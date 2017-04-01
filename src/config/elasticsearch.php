@@ -7,7 +7,9 @@ return [
     // 测试索引配置
     'default' => [
         // Elasticsearch host 及 port
-        'host'     => '127.0.0.1:9200',
+        'host'     => [
+            '127.0.0.1:9200'
+        ],
 
         // model 读取, 使用批量处理数据时需要配置
         'model'    => '\App\Default',

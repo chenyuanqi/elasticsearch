@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace chenyuanqi\elasticsearch\Commands;
 
 use Illuminate\Console\Command;
 use chenyuanqi\elasticsearch\Builder;
@@ -100,6 +100,7 @@ class ElasticsearchService extends Command
     {
         $this->info('新建索引及映射开始');
         $index = (new Builder)->index($this->name);
+        $index->createIndex();
         $index->createMapping();
         $this->info('新建索引及映射结束');
     }
