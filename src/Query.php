@@ -97,6 +97,30 @@ class Query
     }
 
     /**
+     * 批量处理限制次数
+     *
+     * @return mixed
+     */
+    public function getLimitByConfig()
+    {
+        return array_get($this->config, 'limit', 1000);
+    }
+
+    /**
+     * 对应 model 实例
+     *
+     * @return \stdClass
+     */
+    public function getModel()
+    {
+        if($model = array_get($this->config, 'model', '')) {
+            return new $model;
+        }
+
+        return new \stdClass();
+    }
+
+    /**
      * 创建索引
      *
      * @return array
@@ -106,6 +130,7 @@ class Query
         try {
             $result = self::$client->indices()->create([
                 'index' => $this->index,
+                'type'  => $this->type,
                 'body'  => [
                     'mappings' => $this->config['mappings']
                 ]

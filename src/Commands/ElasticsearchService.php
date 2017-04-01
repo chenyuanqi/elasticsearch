@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use chenyuanqi\elasticSearchService\Index;
+use chenyuanqi\elasticSearchService\Builder;
 
 /**
  * Elasticsearch Service 命令行
@@ -99,8 +99,8 @@ class ElasticsearchService extends Command
     protected function mapping()
     {
         $this->info('新建索引开始');
-        $index = new Index($this->name);
-        $index->mapping();
+        $index = (new Builder)->index($this->name);
+        $index->createMapping();
         $this->info('新建索引结束');
     }
 
@@ -112,7 +112,8 @@ class ElasticsearchService extends Command
     protected function updateMapping()
     {
         $this->info('更新索引开始');
-
+        $index = (new Builder)->index($this->name);
+        $index->updateMapping();
         $this->info('更新索引结束');
     }
 
@@ -124,25 +125,17 @@ class ElasticsearchService extends Command
     protected function bulk()
     {
         $this->info('批量写入数据开始');
-        $index = new Index($this->name);
-        $model    = new $index->config['model'];
-        $limit= array_get($index->config, 'limit', 1000);
+        $index = (new Builder)->index($this->name);
+        $model = $index->getModel();
+        $limit = $index->getLimitByConfig();
 
-        $model->chunk($limit, function ($datas){
-            $params = ['body' => []];
-            foreach ($datas as $row) {
+        $model->chunk($limit, function ($datas) use ($index){
+            collect($datas)->map(function ($data) use ($index){
+                $item                 = $index->filter($data);
+                $item['index']['_id'] = sprintf('%s%s', $data->id, $data->apps_type);
 
-                $data = [
-                    'index' => [
-                        '_index' => $index->index,
-                        '_type'  => $index->type,
-                    ]
-                ];
-
-                $data['index']['_id'] = sprintf('%s%s', $row->id, $row->apps_type);
-                $params['body'][]     = $data;
-                $params['body'][]     = $index->getItemBody($row);
-            }
+                return $item;
+            });
 
             $index->bulk($params);
         });
@@ -158,8 +151,8 @@ class ElasticsearchService extends Command
     protected function clear()
     {
         $this->info(sprintf('清除 %s 索引开始', $this->name));
-        $index = new Index($this->name);
-        $index->clear();
+        $index = (new Builder)->index($this->name);
+        $index->truncate();
         $this->info(sprintf('清除 %s 索引结束', $this->name));
     }
 }
