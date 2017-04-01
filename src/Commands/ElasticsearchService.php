@@ -98,10 +98,10 @@ class ElasticsearchService extends Command
      */
     protected function mapping()
     {
-        $this->info('新建索引开始');
+        $this->info('新建索引及映射开始');
         $index = (new Builder)->index($this->name);
         $index->createMapping();
-        $this->info('新建索引结束');
+        $this->info('新建索引及映射结束');
     }
 
     /**
@@ -111,10 +111,10 @@ class ElasticsearchService extends Command
      */
     protected function updateMapping()
     {
-        $this->info('更新索引开始');
+        $this->info('更新映射开始');
         $index = (new Builder)->index($this->name);
         $index->updateMapping();
-        $this->info('更新索引结束');
+        $this->info('更新映射结束');
     }
 
     /**
