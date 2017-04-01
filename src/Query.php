@@ -363,6 +363,34 @@ class Query
     }
 
     /**
+     * 批量增删改
+     *
+     * @param  array $data
+     *         e.g. []
+     *
+     * @return array
+     */
+    public function bulk($data = [])
+    {
+        try {
+            $params['body'] = collect($data)->map(function($item) {
+                $item['index'] = [
+                    '_index' => $this->index,
+                    '_type'  => $this->type
+                ];
+                return $item;
+            });
+            $result = self::$client->bulk($params);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * 查找记录
      *
      * @param $id
@@ -396,6 +424,27 @@ class Query
     public function select($columns = ['*'])
     {
         $this->columns = is_array($columns) ? $columns : func_get_args();
+
+        return $this;
+    }
+
+    /**
+     * 构造 query string 查询条件
+     *
+     * @param  string $string 查询条件如 'package_name:"com.qq"'
+     *
+     * @return $this
+     */
+    public function queryString($string)
+    {
+        $where = [
+            'query' => [
+                'query_string' => [
+                    'query' => $string
+                ]
+            ]
+        ];
+        $this->where = array_merge_recursive($this->where, $where);
 
         return $this;
     }
@@ -571,7 +620,10 @@ class Query
         $params = [
             'index' => $this->index,
             'type'  => $this->type,
-            'body'  => $this->where
+            'body'  => [
+                'fields' => $this->columns,
+                $this->where
+            ]
         ];
         // 默认增加分页参数
         $paging && array_push($params, [
