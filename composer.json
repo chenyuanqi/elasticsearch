@@ -1,5 +1,5 @@
 {
-    "name": "chenyuanqi/elasticsearch-service",
+    "name": "chenyuanqi/elasticsearch",
     "description": "elasticsearch laravel service",
     "type": "library",
     "license": "MIT",
@@ -15,7 +15,7 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/chenyuanqi/elasticsearch-service/issues"
+        "issues": "https://github.com/chenyuanqi/elasticsearch/issues"
     },
     "prefer-stable": true,
     "minimum-stability": "stable",
@@ -32,12 +32,12 @@
     },
     "autoload": {
         "psr-4": {
-            "chenyuanqi\\elasticsearch-service\\": "src/"
+            "chenyuanqi\\elasticsearch\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "chenyuanqi\\elasticsearch-service\\": "tests/"
+            "chenyuanqi\\elasticsearch\\": "tests/"
         }
     }
 }
