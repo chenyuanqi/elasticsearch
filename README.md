@@ -1,6 +1,17 @@
 # elasticsearch-service for laravel5
 This package provides a unified API across a variety of different full text search services.
 
+## Structure 
+├── Commands  
+│   └── ElasticsearchService.php  
+├── config  
+│   └── elasticsearch.php  
+├── Analyze.php  
+├── Builder.php  
+├── Facade.php  
+├── Query.php  
+└── SearchServiceProvider.php  
+
 ## Install
  You can edit composer.json file, in the require object:
  ```json
@@ -11,7 +22,7 @@ Add now, the service provider to app/config/app.php, within the providers array.
 ```php
 'providers' => [
 	// elasticsearch service
-	'chenyuanqi\elasticsearch-service',
+	'chenyuanqi\elasticsearch-service\SearchServiceProvider::class',
 ],
 ```
 Add a class alias to app/config/app.php, within the aliases array.
