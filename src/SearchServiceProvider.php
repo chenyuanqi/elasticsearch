@@ -7,14 +7,14 @@ use Illuminate\Support\ServiceProvider;
 class SearchServiceProvider extends ServiceProvider
 {
     /**
-     * Indicates if loading of the provider is deferred.
+     * 是否延迟加载
      *
      * @var bool
      */
     protected $defer = false;
 
     /**
-     * Bootstrap the application services.
+     * 启动应用服务 (发布 elasticsearch 配置)
      *
      * @return void
      */
@@ -26,7 +26,7 @@ class SearchServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the application services.
+     * 注册应用服务 (注册 elasticsearch Commands 和 Search Facade)
      *
      * @return void
      */

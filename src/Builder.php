@@ -6,27 +6,47 @@ use Config;
 
 class Builder
 {
-    protected $indexes = [];
+    /**
+     * elastic 链接集合
+     *
+     * @var array
+     */
+    protected static $indexes = [];
 
     public function __construct()
     {
     }
 
-    public function index($index = null)
+    /**
+     * 建立索引链接
+     *
+     * @param null $index
+     *
+     * @return mixed
+     */
+    public static function index($index = null)
     {
         if (!$index) {
             $index = Config::get('elasticsearch.default_index', 'default');
         }
 
-        if (!isset($this->indexes[$index])) {
-            $this->indexes[$index] = new Query($index);
+        if (!isset(static::$indexes[$index])) {
+            static::$indexes[$index] = new Query($index);
         }
 
-        return $this->indexes[$index];
+        return static::$indexes[$index];
     }
 
-    public function __call($method, array $parameters)
+    /**
+     * 静态方法请求 Query
+     *
+     * @param       $method
+     * @param array $parameters
+     *
+     * @return mixed
+     */
+    public static function __callStatic($method, array $parameters)
     {
-        return call_user_func_array([$this->index(), $method], $parameters);
+        return call_user_func_array([self::index(), $method], $parameters);
     }
 }

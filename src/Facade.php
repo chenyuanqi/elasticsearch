@@ -5,7 +5,7 @@ namespace chenyuanqi\elasticSearchService;
 class Facade extends \Illuminate\Support\Facades\Facade
 {
     /**
-     * Get the registered name of the component.
+     * 注册 Search Facade
      *
      * @return string
      */
