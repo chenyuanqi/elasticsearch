@@ -120,23 +120,34 @@ class Query
         return new \stdClass();
     }
 
+    public function createIndex()
+    {
+        try {
+            return self::$client->indices()->create([
+                'index' => $this->index
+            ]);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
     /**
-     * 创建索引
+     * 创建映射
      *
      * @return array
      */
     public function createMapping()
     {
         try {
-            $result = self::$client->indices()->create([
+            return self::$client->indices()->create([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'body'  => [
                     'mappings' => $this->config['mappings']
                 ]
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             return [];
         } catch (\Exception $e) {
@@ -145,22 +156,20 @@ class Query
     }
 
     /**
-     * 更新索引
+     * 更新映射
      *
      * @return array
      */
     public function updateMapping()
     {
         try {
-            $result = self::$client->indices()->putMapping([
+            return self::$client->indices()->putMapping([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'body'  => [
                     'mappings' => $this->config['mappings']
                 ]
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             return [];
         } catch (\Exception $e) {
@@ -169,19 +178,17 @@ class Query
     }
 
     /**
-     * 删除索引
+     * 删除映射
      *
      * @return array
      */
     public function deleteMapping()
     {
         try {
-            $result = self::$client->indices()->deleteMapping([
+            return self::$client->indices()->deleteMapping([
                 'index' => $this->index,
                 'type'  => $this->type,
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             return [];
         } catch (\Exception $e) {
@@ -200,14 +207,14 @@ class Query
     public function insert($body, $id = '')
     {
         try {
-            $result = self::$client->create([
+            $params = [
                 'index' => $this->index,
                 'type'  => $this->type,
-                'id'    => $id,
                 'body'  => $this->filter($body)
-            ]);
+            ];
+            $id && array_push($params, ['id' => $id]);
 
-            return $result;
+            return self::$client->create($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             return [];
         } catch (\Exception $e) {
@@ -368,7 +375,7 @@ class Query
     }
 
     /**
-     * 清空索引
+     * 删除并清空索引
      *
      * @return array
      */
