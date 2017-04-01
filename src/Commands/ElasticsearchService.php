@@ -82,7 +82,7 @@ class ElasticsearchService extends Command
                     break;
 
                 default:
-                    $this->error('操作 '.$this->action.' 未发现，目前仅支持 new, update, clear 操作');
+                    $this->error('操作 '.$this->action.' 未发现，目前仅支持 new, update, bulk, clear 操作');
                     break;
             }
         }
