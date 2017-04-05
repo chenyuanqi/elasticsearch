@@ -70,6 +70,13 @@ class Query
     protected $offset = 0;
 
     /**
+     * 查询排序
+     *
+     * @var array
+     */
+    protected $order = [];
+
+    /**
      * 获取配置，建立链接
      *
      * @param $index
@@ -120,6 +127,11 @@ class Query
         return new \stdClass();
     }
 
+    /**
+     * 创建索引
+     *
+     * @return array
+     */
     public function createIndex()
     {
         try {
@@ -134,6 +146,15 @@ class Query
     }
 
     /**
+     * 输出调试信息
+     */
+    public function debug()
+    {
+        dd(self::$client->transport->getConnection()->getLastRequestInfo());
+    }
+
+
+    /**
      * 创建映射
      *
      * @return array
@@ -143,7 +164,6 @@ class Query
         try {
             return self::$client->indices()->create([
                 'index' => $this->index,
-                'type'  => $this->type,
                 'body'  => [
                     'mappings' => $this->config['mappings']
                 ]
@@ -167,7 +187,7 @@ class Query
                 'index' => $this->index,
                 'type'  => $this->type,
                 'body'  => [
-                    'mappings' => $this->config['mappings']
+                    $this->config['mappings']
                 ]
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
@@ -227,11 +247,10 @@ class Query
      *
      * @param array  $body
      * @param string $id
-     * @param int    $times 失败重试次数
      *
      * @return array
      */
-    public function updateById(array $body, $id, $times = 3)
+    public function updateById(array $body, $id)
     {
         try {
             $result = self::$client->update([
@@ -239,10 +258,6 @@ class Query
                 'type'  => $this->type,
                 'id'    => $id,
                 'body'  => [
-                    'script' => 'ctx._source.counter += count',
-                    'params' => [
-                        'count' => $times
-                    ],
                     'doc' => $this->filter($body)
                 ]
             ]);
@@ -259,11 +274,10 @@ class Query
      * 根据查询条件更新数据
      *
      * @param array $body
-     * @param int   $times
      *
      * @return array
      */
-    public function update(array $body, $times = 3)
+    public function update(array $body)
     {
         if (!$this->where) {
             return [];
@@ -271,16 +285,10 @@ class Query
 
         try {
             $result = self::$client->updateByQuery([
-                'index' => $this->index,
-                'type'  => $this->type,
-                'body'  => [
-                    $this->where,
-                    'script' => 'ctx._source.counter += count',
-                    'params' => [
-                        'count' => $times
-                    ],
-                    'doc' => $this->filter($body)
-                ]
+                'index'     => $this->index,
+                'type'      => $this->type,
+                'conflicts' => 'proceed',
+                'body'      => $this->where
             ]);
 
             return $result;
@@ -445,6 +453,47 @@ class Query
     }
 
     /**
+     * 执行查询
+     *
+     * @param  boolean $paging 是否分页
+     * @return $this
+     */
+    public function search($paging = false)
+    {
+        $params = [
+            'index' => $this->index,
+            'type'  => $this->type,
+            'body'  => $this->where
+        ];
+        // 是否开启分页
+        if($paging) {
+            $params['from'] = $this->offset;
+            $params['size'] = $this->limit;
+        }
+        // 是否设置排序
+        if($this->order) {
+            $params['body']['sort'] = $this->order;
+        }
+        $this->output = self::$client->search($params);
+
+        return $this;
+    }
+
+    /**
+     * 查询命中总数量
+     *
+     * @return int
+     */
+    public function count()
+    {
+        // 无结果时，自行查询
+        if (!isset($this->output['hits']['total'])) {
+            $this->search();
+        }
+        return isset($this->output['hits']['total']) ? $this->output['hits']['total'] : 0;
+    }
+
+    /**
      * 选择展示字段，默认所有
      *
      * @param array $columns
@@ -467,11 +516,9 @@ class Query
      */
     public function queryString($string)
     {
-        $where = [
-            'query' => [
-                'query_string' => [
-                    'query' => $string
-                ]
+        $where['query'] = [
+            'query_string' => [
+                'query' => $string
             ]
         ];
         $this->where = array_merge_recursive($this->where, $where);
@@ -492,33 +539,27 @@ class Query
     {
         switch ($type) {
             case 'match':
-                $where = [
-                    'query' => [
-                        'match' => [
-                            $field => $value
-                        ]
+                $where['query'] = [
+                    'match' => [
+                        $field => $value
                     ]
                 ];
                 break;
 
             case 'multi_match':
-                $where = [
-                    'query' => [
-                        'multi_match' => [
-                            'type'   => 'most_fields',
-                            'fields' => $field,
-                            'query'  => $value
-                        ]
+                $where['query'] = [
+                    'multi_match' => [
+                        'type'   => 'most_fields',
+                        'fields' => $field,
+                        'query'  => $value
                     ]
                 ];
                 break;
 
             default:
-                $where = [
-                    'query' => [
-                        'match' => [
-                            '_all' => $field
-                        ]
+                $where['query'] = [
+                    'match' => [
+                        '_all' => $field
                     ]
                 ];
                 break;
@@ -538,11 +579,9 @@ class Query
      */
     public function term($field, $value)
     {
-        $where = [
-            'query' => [
-                'term' => [
-                    $field => $value
-                ]
+        $where['query'] = [
+            'term' => [
+                $field => $value
             ]
         ];
         $this->where = array_merge_recursive($this->where, $where);
@@ -561,12 +600,10 @@ class Query
      */
     public function bool($field, $value, $type = 'must')
     {
-        $where = [
-            'query' => [
-                'bool' => [
-                    $type => [
-                        'term' => [$field => $value]
-                    ]
+        $where['query'] = [
+            'bool' => [
+                $type => [
+                    'term' => [$field => $value]
                 ]
             ]
         ];
@@ -586,13 +623,11 @@ class Query
      */
     public function range($field, $range = [0, 100], $parameter = ['gte', 'lte'], $extraParameter = [])
     {
-        $where = [
-            'query' => [
-                'range' => [
-                    $field => [
-                        [$parameter[0] => $range[0]],
-                        [$parameter[1] => $range[1]]
-                    ]
+        $where['query'] = [
+            'range' => [
+                $field => [
+                    [$parameter[0] => $range[0]],
+                    [$parameter[1] => $range[1]]
                 ]
             ]
         ];
@@ -611,11 +646,9 @@ class Query
      */
     public function ids(array $ids)
     {
-        $where = [
-            'query' => [
-                'ids' => [
-                    'values' => $ids
-                ]
+        $where['query'] = [
+            'ids' => [
+                'values' => $ids
             ]
         ];
         $this->where = array_merge_recursive($this->where, $where);
@@ -624,14 +657,14 @@ class Query
     }
 
     /**
-     * 获取分页参数
+     * 设置分页参数
      *
      * @param int $limit
      * @param int $offset
      *
      * @return $this
      */
-    public function limit($limit = 10, $offset = 0)
+    public function limit($offset = 0, $limit = 10)
     {
         $this->limit  = $limit;
         $this->offset = $offset;
@@ -640,39 +673,19 @@ class Query
     }
 
     /**
-     * 执行查询
+     * 设置排序参数
      *
-     * @param  boolean $paging 是否分页
+     * @param  array $order e.g ['name' => 'asc', 'age' => 'desc']
+     *
      * @return $this
      */
-    public function search($paging = true)
+    public function order(array $order)
     {
-        $params = [
-            'index' => $this->index,
-            'type'  => $this->type,
-            'body'  => [
-                'fields' => $this->columns,
-                $this->where
-            ]
-        ];
-        // 默认增加分页参数
-        $paging && array_push($params, [
-            'from'  => $this->limit,
-            'size'  => $this->offset
-        ]);
-        $this->output = self::$client->search($params);
+        $this->order = collect($order)->map(function ($item){
+            return ['order' => $item];
+        })->toArray();
 
         return $this;
-    }
-
-    /**
-     * 查询命中总数量
-     *
-     * @return int
-     */
-    public function count()
-    {
-        return isset($this->output['hits']['total']) ? $this->output['hits']['total'] : 0;
     }
 
     /**
@@ -705,8 +718,8 @@ class Query
         $result = collect($this->output['hits']['hits'])->map(function ($item){
             $item['_source']['_id'] = $item['_id'];
 
-            return $item['_source'];
-        })->toArray();
+            return in_array('*', $this->columns, true) ? $item['_source'] : collect($item['_source'])->only($this->columns)->toArray();
+        });
         // 总记录数
         $result['total'] = $this->output['hits']['total'];
 
