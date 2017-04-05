@@ -87,7 +87,7 @@ $data = [
 ];
 // delete by id
 Search::deleteById(1);
-// delete by query
+// delete by query, not support for version >2.0 (consider plugin: delete-by-query) 
 Search::queryString('name:"Kyyomi"')->delete();
 ```
 ### 6、search for clean index
@@ -95,4 +95,40 @@ Search::queryString('name:"Kyyomi"')->delete();
 Search::truncate();
 ```
 ### 7、everything is for search   
-...
+You can select fields show when use output format.
+```php
+Search::select(['name', 'age'])->search()->outputFormat();
+```
+Default paging is true and show the result first ten, If you don't need it
+```php
+Search::select(['name', 'age'])->search(false)->outputFormat();
+```
+Construct the conditions with queryString, just like that
+ ```php
+ Search::queryString('name=Kyyomi');
+ ```
+ Or the conditions with ids
+ ```php
+ Search::ids([1, 2, 3]);
+ ```
+ Or the conditions with match
+ ```php
+ Search::match('name', 'Kyyomi', 'match');
+ Search::match(['name', 'age'], 'Kyyomi', 'multi_match');
+ Search::match('Kyyomi');
+ ```
+ Or the conditions with term
+ ```php
+Search::term('name', 'Kyyomi');
+```
+Or the conditions with bool
+```php
+// The third parameter include must(default value), must_not, should, filter.
+Search::bool('name', 'Kyyomi', 'must_not');
+```
+Or the conditions with range
+```php
+Search::range('age', [7, 18], ['gt', 'lte']);
+```
+However, the range query has fourth parameter which is extra parameter.
+
