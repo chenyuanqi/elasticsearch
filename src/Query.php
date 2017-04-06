@@ -186,9 +186,7 @@ class Query
             return self::$client->indices()->putMapping([
                 'index' => $this->index,
                 'type'  => $this->type,
-                'body'  => [
-                    $this->config['mappings']
-                ]
+                'body'  => $this->config['mappings']
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             return [];
@@ -230,7 +228,7 @@ class Query
             $params = [
                 'index' => $this->index,
                 'type'  => $this->type,
-                'body'  => $this->filter($body)
+                'body'  => $this->filterFields($body)
             ];
             $id && $params['id'] = $id;
 
@@ -258,7 +256,7 @@ class Query
                 'type'  => $this->type,
                 'id'    => $id,
                 'body'  => [
-                    'doc' => $this->filter($body)
+                    'doc' => $this->filterFields($body)
                 ]
             ]);
 
@@ -284,14 +282,21 @@ class Query
         }
 
         try {
-            $result = self::$client->updateByQuery([
+            $inline = collect($body)->map(function($item, $key) {
+                return "ctx._source.{$key}={$item}";
+            })->implode('&');
+
+            return self::$client->updateByQuery([
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
-                'body'      => $this->where
+                'body'      => [
+                    $this->where,
+                    'script' => [
+                        'inline' => $inline
+                    ]
+                ]
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             return [];
         } catch (\Exception $e) {
@@ -320,8 +325,78 @@ class Query
                     'params' => [
                         'count' => $times
                     ],
-                    'upsert' => $this->filter($body)
+                    'upsert' => $this->filterFields($body)
                     ]
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 指定字段自增
+     *
+     * @param  string $field 自增字段
+     * @param  int    $value 自增数值 (默认 1)
+     *
+     * @return array
+     */
+    public function increase($field, $value = 1)
+    {
+        if(!$field || !$this->where) {
+            return [];
+        }
+
+        try {
+            $result = self::$client->updateByQuery([
+                'index'     => $this->index,
+                'type'      => $this->type,
+                'conflicts' => 'proceed',
+                'body'      => [
+                    $this->where,
+                    'script' => [
+                        'inline' => "ctx._source.{$field}+={$value}"
+                    ]
+                ]
+            ]);
+
+            return $result;
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * 指定字段自减
+     *
+     * @param  string $field 自减字段
+     * @param  int    $value 自减数值
+     *
+     * @return array
+     */
+    public function decrease($field, $value = 1)
+    {
+        if(!$field || !$this->where) {
+            return [];
+        }
+
+        try {
+            $result = self::$client->updateByQuery([
+                'index'     => $this->index,
+                'type'      => $this->type,
+                'conflicts' => 'proceed',
+                'body'      => [
+                    $this->where,
+                    'script' => [
+                        'inline' => "ctx._source.{$field}-={$value}"
+                    ]
+                ]
             ]);
 
             return $result;
@@ -410,17 +485,35 @@ class Query
      */
     public function bulk($data = [])
     {
-        try {
-            $params['body'] = collect($data)->map(function($item) {
-                $item['index'] = [
-                    '_index' => $this->index,
-                    '_type'  => $this->type
-                ];
-                return $item;
-            });
-            $result = self::$client->bulk($params);
+        if(!count($data)) {
+            return [];
+        }
 
-            return $result;
+        try {
+            $params['body'] = [];
+            // 构造 body
+            foreach ($data as $item) {
+                $allowOperation = ['index', 'create', 'update', 'delete'];
+                $type           = isset($item[0]) && in_array($item[0], $allowOperation, true) ? $item[0] : 'index';
+
+                $params['body'][][$type] = [
+                    '_index' => $this->index,
+                    '_type'  => $this->type,
+                    '_id'    => $item['_id']
+                ];
+
+                if('delete' === $type) {
+                    continue;
+                } elseif ('update' === $type) {
+                    unset($item[0], $item['_id']);
+                    $params['body'][]['doc'] = $this->filterFields($item);
+                } else {
+                    unset($item[0], $item['_id']);
+                    $params['body'][] = $this->filterFields($item);
+                }
+            }
+
+            return self::$client->bulk($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             return [];
         } catch (\Exception $e) {
@@ -695,7 +788,7 @@ class Query
      *
      * @return array
      */
-    public function filter(array $body)
+    public function filterFields(array $body)
     {
         if (!$body) {
             return [];

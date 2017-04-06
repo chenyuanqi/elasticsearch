@@ -12,7 +12,7 @@ return [
         ],
 
         // model 读取, 使用批量处理数据时需要配置
-        'model'    => '\App\Default',
+        'model'    => '\App\Model\Default',
         // 批量处理数据时，限制单次数量
         'limit'    => 10000,
         // 索引名称和类型

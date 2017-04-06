@@ -52,6 +52,7 @@ The following dependencies are needed for the listed search drivers:
 ```php
 Search::createIndex();
 ```
+Notice: Index name must be lowercase.
 ### 2、search for mapping due to config
 ```php
 Search::createMapping();
@@ -94,7 +95,36 @@ Search::queryString('name:"Kyyomi"')->delete();
 ```php
 Search::truncate();
 ```
-### 7、everything is for search   
+### 7、search for bulk
+```php
+$data = [
+    [
+        'index',
+        '_id'  => 1,
+        'name' => 'viki',
+        'age'  => 18
+    ],
+    [
+        'create',
+        '_id'  => 2
+        'name' => 'lucy',
+        'age'  => 15
+    ],
+    [
+        'update',
+        '_id'  => 1,
+        'name' => 'vikey',
+        'age'  => 28
+    ],
+    [
+        'delete',
+        '_id' => 2
+    ]
+]
+Search::bulk($data);
+```
+Notice: Default handle is 'index'.  
+### 8、everything is for search   
 You can select fields show when use output format.
 ```php
 Search::select(['name', 'age'])->search()->outputFormat();

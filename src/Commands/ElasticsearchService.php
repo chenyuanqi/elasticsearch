@@ -100,7 +100,6 @@ class ElasticsearchService extends Command
     {
         $this->info('新建索引及映射开始');
         $index = (new Builder)->index($this->name);
-        $index->createIndex();
         $index->createMapping();
         $this->info('新建索引及映射结束');
     }
@@ -131,9 +130,9 @@ class ElasticsearchService extends Command
         $limit = $index->getLimitByConfig();
 
         $model->chunk($limit, function ($datas) use ($index){
-            collect($datas)->map(function ($data) use ($index){
-                $item                 = $index->filter($data);
-                $item['index']['_id'] = sprintf('%s%s', $data->id, $data->apps_type);
+            $params = collect($datas)->map(function ($data) use ($index){
+                $item        = $data->toArray();
+                $item['_id'] = sprintf('%s', $data->id);
 
                 return $item;
             });
