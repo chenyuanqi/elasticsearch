@@ -15,7 +15,9 @@ This package provides a unified API across a variety of different full text sear
 ## Install
  You can edit composer.json file, in the require object:
  ```json
+{
 "chenyuanqi/elasticsearch": "dev-master"
+}
 ```
 Or use composer command:
 ```bash
@@ -43,9 +45,11 @@ php artisan vendor:publish
 ```
 The following dependencies are needed for the listed search drivers:
 ```json
+{
 "php": ">=5.5.0",
 "illuminate/support": "~5.1",
 "elasticsearch/elasticsearch": "~2.0"
+}
 ```
 ## Usage
 ### 1、search for create index
@@ -59,7 +63,12 @@ Search::createMapping();
 Search::updateMapping();
 Search::deleteMapping();
 ```
-### 3、search for insert data 
+### 3、search for select index and type
+```php
+Search::index('test')->type('test');
+```
+Notice: Here index and type has default value.
+### 4、search for insert data 
 ```php
 $data = [
     'name'  => 'Kyyomi',
@@ -69,7 +78,7 @@ $data = [
 // However, you can set id for the record. For instance, "Search::insert($data, 1);"
 Search::insert($data);
 ```
-### 4、search for update data  
+### 5、search for update data  
 Here provide two way for update data, 
 ```php
 $data = [
@@ -80,7 +89,19 @@ Search::updateById($data, 1);
 // update by query
 Search::queryString('name:"Kyyomi"')->update($data);
 ```
-### 5、search for delete data  
+By the way, use update by query must open the script setting
+```yaml
+# In elasticsearch 2.3.3, allow script operate
+  script.inline: true
+  script.indexed: true
+```
+### 6、search for increase or decrease data
+```php
+Search::queryString('name:"海盗之王"')->increase('age');
+Search::queryString('name:"海盗之王"')->increase('age', 2);
+Search::queryString('name:"海盗之王"')->decrease('age', 3);
+```
+### 7、search for delete data  
 Here provide two way for delete data, 
 ```php
 $data = [
@@ -91,11 +112,11 @@ Search::deleteById(1);
 // delete by query, not support for version >2.0 (consider plugin: delete-by-query) 
 Search::queryString('name:"Kyyomi"')->delete();
 ```
-### 6、search for clean index
+### 8、search for clean index
 ```php
 Search::truncate();
 ```
-### 7、search for bulk
+### 9、search for bulk
 ```php
 $data = [
     [
@@ -124,7 +145,7 @@ $data = [
 Search::bulk($data);
 ```
 Notice: Default handle is 'index'.  
-### 8、everything is for search   
+### 10、everything is for search   
 You can select fields show when use output format.
 ```php
 Search::select(['name', 'age'])->search()->outputFormat();
@@ -136,6 +157,10 @@ Search::select(['name', 'age'])->search(false)->outputFormat();
 Construct the conditions with queryString, just like that
  ```php
  Search::queryString('name=Kyyomi');
+ ```
+ Or the conditions with filter
+ ```php
+ Search::filter('status', 'show');
  ```
  Or the conditions with ids
  ```php
@@ -160,5 +185,6 @@ Or the conditions with range
 ```php
 Search::range('age', [7, 18], ['gt', 'lte']);
 ```
-However, the range query has fourth parameter which is extra parameter.
+However, the range query has fourth parameter which use as extra action.  
+
 
