@@ -7,38 +7,29 @@ use Config;
 class Builder
 {
     /**
-     * elastic 链接集合
+     * query 单例
      *
-     * @var array
+     * @var string
      */
-    protected static $indexes = [];
-
-    protected static $index = '';
+    protected static $query;
 
     public function __construct()
     {
     }
 
     /**
-     * 建立索引链接
-     *
-     * @param null $index
+     * 获取 query 实例
      *
      * @return mixed
      */
-    public static function index($index = null)
+    public static function query()
     {
-        if(!$index && !self::$index) {
-            self::$index = Config::get('elasticsearch.default_index', 'default');
-        } elseif($index) {
-            self::$index = $index;
+        if (!isset(static::$query)) {
+            static::$query = new Query();
         }
 
-        if (!isset(static::$indexes[self::$index ])) {
-            static::$indexes[self::$index ] = new Query(self::$index );
-        }
+        return static::$query;
 
-        return static::$indexes[self::$index ];
     }
 
     /**
@@ -51,6 +42,6 @@ class Builder
      */
     public function __call($method, array $arguments)
     {
-        return call_user_func_array([self::index(), $method], $arguments);
+        return call_user_func_array([self::query(), $method], $arguments);
     }
 }

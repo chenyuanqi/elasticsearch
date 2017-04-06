@@ -79,18 +79,57 @@ class Query
     /**
      * 获取配置，建立链接
      *
-     * @param $index
      */
-    public function __construct($index)
+    public function __construct()
     {
-        $config       = \Config::get('elasticsearch.'.$index, []);
-        $this->config = $config;
-        $this->index  = $config['index']['indices'];
-        $this->type   = $config['index']['type'];
-
-        if (!static::$client) {
-            static::$client = ClientBuilder::create()->setHosts($config['host'])->build();
+        // 默认索引及类型判断
+        if (!isset($this->type)) {
+            $this->index = \Config::get('elasticsearch.default_index', 'default');
         }
+        if (!isset($this->type)) {
+            $this->type = \Config::get('elasticsearch.default_type', 'default');
+        }
+
+        // 获取索引配置
+        $config       = \Config::get('elasticsearch.'.$this->index, []);
+        if(!isset($config['indices'][$this->type])) {
+            echo 'Keep the configure right, please!';
+            exit();
+        }
+
+        // 类型下的配置
+        $this->config = $config['indices'][$this->type];
+        static::$client = ClientBuilder::create()->setHosts($config['connection'])->build();
+    }
+
+    /**
+     * 设置索引
+     *
+     * @param  string $index 索引名称
+     *
+     * @return $this
+     */
+    public function index($index = null)
+    {
+
+        $this->index = $index;
+
+        return $this;
+    }
+
+    /**
+     * 设置类型
+     *
+     * @param $type
+     *
+     * @return $this
+     */
+    public function type($type = null)
+    {
+
+        $this->type = $type;
+
+        return $this;
     }
 
     /**
@@ -110,7 +149,7 @@ class Query
      */
     public function getLimitByConfig()
     {
-        return array_get($this->config, 'limit', 1000);
+        return array_get($this->config, 'limit', 10000);
     }
 
     /**
@@ -139,9 +178,11 @@ class Query
                 'index' => $this->index
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -169,9 +210,11 @@ class Query
                 ]
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -189,9 +232,11 @@ class Query
                 'body'  => $this->config['mappings']
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -208,9 +253,11 @@ class Query
                 'type'  => $this->type,
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -234,9 +281,11 @@ class Query
 
             return self::$client->create($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -251,7 +300,7 @@ class Query
     public function updateById(array $body, $id)
     {
         try {
-            $result = self::$client->update([
+            return self::$client->update([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'id'    => $id,
@@ -259,12 +308,12 @@ class Query
                     'doc' => $this->filterFields($body)
                 ]
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -283,7 +332,7 @@ class Query
 
         try {
             $inline = collect($body)->map(function($item, $key) {
-                return "ctx._source.{$key}={$item}";
+                return "ctx._source.{$key} = {$item}";
             })->implode('&');
 
             return self::$client->updateByQuery([
@@ -291,16 +340,18 @@ class Query
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
                 'body'      => [
-                    $this->where,
+                    'query'  => $this->where['query'],
                     'script' => [
                         'inline' => $inline
                     ]
                 ]
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -309,14 +360,14 @@ class Query
      *
      * @param        $body
      * @param string $id
-     * @param int    $times 失败重试次数
+     * @param int    $times
      *
      * @return array
      */
     public function insertOrUpdate($body, $id = '', $times = 3)
     {
         try {
-            $result = self::$client->update([
+            return self::$client->update([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'id'    => $id,
@@ -328,8 +379,6 @@ class Query
                     'upsert' => $this->filterFields($body)
                     ]
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             return [];
         } catch (\Exception $e) {
@@ -352,23 +401,26 @@ class Query
         }
 
         try {
-            $result = self::$client->updateByQuery([
+            return self::$client->updateByQuery([
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
                 'body'      => [
-                    $this->where,
+                    'query'  => $this->where['query'],
                     'script' => [
-                        'inline' => "ctx._source.{$field}+={$value}"
+                        'inline' => "ctx._source.{$field} += params.count",
+                        'params' => [
+                            'count' => $value
+                        ]
                     ]
                 ]
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -387,23 +439,26 @@ class Query
         }
 
         try {
-            $result = self::$client->updateByQuery([
+            return self::$client->updateByQuery([
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
                 'body'      => [
-                    $this->where,
+                    'query'  => $this->where['query'],
                     'script' => [
-                        'inline' => "ctx._source.{$field}-={$value}"
+                        'inline' => "ctx._source.{$field} -= params.count",
+                        'params' => [
+                            'count' => $value
+                        ]
                     ]
                 ]
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -417,17 +472,17 @@ class Query
     public function deleteById($id)
     {
         try {
-            $result = self::$client->delete([
+            return self::$client->delete([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'id'    => $id
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -443,17 +498,17 @@ class Query
         }
 
         try {
-            $result = self::$client->deleteByQuery([
+            return self::$client->deleteByQuery([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'body'  => $this->where
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -469,9 +524,11 @@ class Query
                 'index' => $this->index
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -515,9 +572,11 @@ class Query
 
             return self::$client->bulk($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -531,17 +590,17 @@ class Query
     public function find($id)
     {
         try {
-            $result = self::$client->get([
+            return self::$client->get([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'id'    => $id
             ]);
-
-            return $result;
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -570,6 +629,18 @@ class Query
         $this->output = self::$client->search($params);
 
         return $this;
+    }
+
+    /**
+     * 获取查询第一条
+     *
+     * @return array
+     */
+    public function first()
+    {
+        $output = $this->search()->outputFormat();
+
+        return isset($output[0]) ? $output[0] : [];
     }
 
     /**
@@ -750,6 +821,26 @@ class Query
     }
 
     /**
+     * 构造过滤条件
+     *
+     * @param $field
+     * @param $value
+     *
+     * @return $this
+     */
+    public function filter($field, $value)
+    {
+        $where['filter'] = [
+            'term' => [
+                $field => $value
+            ]
+        ];
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
      * 设置分页参数
      *
      * @param int $limit
@@ -772,7 +863,7 @@ class Query
      *
      * @return $this
      */
-    public function order(array $order)
+    public function orderBy(array $order)
     {
         $this->order = collect($order)->map(function ($item){
             return ['order' => $item];
@@ -812,7 +903,7 @@ class Query
             $item['_source']['_id'] = $item['_id'];
 
             return in_array('*', $this->columns, true) ? $item['_source'] : collect($item['_source'])->only($this->columns)->toArray();
-        });
+        })->toArray();
         // 总记录数
         $result['total'] = $this->output['hits']['total'];
 
