@@ -77,6 +77,33 @@ class Query
     protected $order = [];
 
     /**
+     * 每次 scroll 取结果数量
+     *
+     * @var int
+     */
+    protected $scroll_size;
+
+    /**
+     * scroll 请求过期时间 (尽量不要设置过长)
+     * @var string
+     */
+    protected $scroll_expire;
+
+    /**
+     * scroll 搜索类型
+     *
+     * @var string
+     */
+    protected $scroll_type;
+
+    /**
+     * scroll 执行次数
+     *
+     * @var int
+     */
+    protected $scroll_twice;
+
+    /**
      * 获取配置，建立链接
      *
      */
@@ -333,7 +360,7 @@ class Query
         try {
             $inline = collect($body)->map(function($item, $key) {
                 return "ctx._source.{$key} = {$item}";
-            })->implode('&');
+            })->implode(';');
 
             return self::$client->updateByQuery([
                 'index'     => $this->index,
@@ -360,11 +387,10 @@ class Query
      *
      * @param        $body
      * @param string $id
-     * @param int    $times
      *
      * @return array
      */
-    public function insertOrUpdate($body, $id = '', $times = 3)
+    public function insertOrUpdate($body, $id)
     {
         try {
             return self::$client->update([
@@ -372,17 +398,15 @@ class Query
                 'type'  => $this->type,
                 'id'    => $id,
                 'body'  => [
-                    'script' => 'ctx._source.counter += count',
-                    'params' => [
-                        'count' => $times
-                    ],
                     'upsert' => $this->filterFields($body)
-                    ]
+                ]
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         } catch (\Exception $e) {
-            return [];
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
         }
     }
 
@@ -622,11 +646,36 @@ class Query
             $params['from'] = $this->offset;
             $params['size'] = $this->limit;
         }
+        // 是否开启滚屏或者扫描
+        $this->scroll_type   && $params['search_type'] = $this->scroll_type;
+        $this->scroll_size   && $params['body']['size']        = $this->scroll_size;
+        $this->scroll_expire && $params['scroll']      = $this->scroll_expire;
         // 是否设置排序
         if($this->order) {
             $params['body']['sort'] = $this->order;
         }
         $this->output = self::$client->search($params);
+        // 如果是滚屏或扫描，结果再次查询
+        $this->searchWithScroll();
+
+        return $this;
+    }
+
+    /**
+     * 根据 scroll_id 查询数据
+     * @param  string $scroll_id
+     *
+     * @return $this
+     */
+    public function searchWithScroll($scroll_id = null)
+    {
+        $scroll_id = $scroll_id ?: $this->output['_scroll_id'];
+        if ($scroll_id) {
+            $this->output = self::$client->scroll([
+                "scroll"    => $this->scroll_expire,
+                "scroll_id" => $scroll_id
+            ]);
+        }
 
         return $this;
     }
@@ -852,6 +901,24 @@ class Query
     {
         $this->limit  = $limit;
         $this->offset = $offset;
+
+        return $this;
+    }
+
+    /**
+     * 设置 scroll 参数
+     *
+     * @param int    $size
+     * @param string $expire 过期时间 (e.g. 1min, 2h, 3d)
+     * @param string $type   查询类型 (e.t. scan or '')
+     *
+     * @return $this
+     */
+    public function scroll($size = 1000, $expire = '30s', $type = '')
+    {
+        $this->scroll_size   = $size;
+        $this->scroll_expire = $expire;
+        $this->scroll_type   = $type;
 
         return $this;
     }
