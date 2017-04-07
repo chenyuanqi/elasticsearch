@@ -12,6 +12,8 @@ This package provides a unified API across a variety of different full text sear
 ├── SearchFacade.php  
 └── SearchServiceProvider.php  
 
+## Suggestion
+For safety reasons, please install the plugin: [shield](https://www.elastic.co/downloads/shield "shield")   
 ## Install
  You can edit composer.json file, in the require object:
  ```json
@@ -150,13 +152,13 @@ Search::bulk($data);
 ```
 Notice: Default handle is 'index'.  
 ### 10、everything is for search   
-You can select fields show when use output format.
+You can select fields show for search.
 ```php
-Search::select(['name', 'age'])->search()->outputFormat();
+Search::select(['name', 'age'])->search();
 ```
 Default paging is true and show the result first ten, If you don't need it
 ```php
-Search::select(['name', 'age'])->search(false)->outputFormat();
+Search::select(['name', 'age'])->search(false);
 ```
 Construct the conditions with queryString, just like that
  ```php
@@ -194,9 +196,19 @@ However, the range query has fourth parameter which use as extra action.
 Here are two ways When we need paging.
 ```php
 // paging style
-Search::queryString('name:"珍珠海盗"')->limit(0, 10)->search()->outputFormat();
+Search::queryString('name:"珍珠海盗"')->limit(0, 10)->search();
 // scroll style
-Search::queryString('name:"珍珠海盗"')->scroll(1000, '30s', 'scan')->search()->outputFormat();
+Search::queryString('name:"珍珠海盗"')->scroll(1000, '30s', 'scan')->search();
+// If you want use scroll id for search or delete it
+Search::searchByScrollId('xxx');
+Search::deleteByScrollId('xxx');
 ```
+
+At last, use the debug function that output the debug message as you need. 
+```php
+Search::queryString('name:"珍珠海盗"')->search();
+Search::debug();
+```
+
 
 
