@@ -10,13 +10,7 @@ return [
     'default'       => [
         // 链接配置 (可配多个)
         'connection' => [
-            [
-                'host'     => '127.0.0.1',
-                'port'     => '9200',
-                'scheme'   => 'http',
-                'user'     => '',
-                'password' => ''
-            ],
+            'http://es_admin:es_admin_password@127.0.0.1:9200',
         ],
 
         // 索引下的类型配置
