@@ -359,7 +359,7 @@ class Query
 
         try {
             $inline = collect($body)->map(function($item, $key) {
-                return "ctx._source.{$key} = {$item}";
+                return "ctx._source.{$key} = {$key}";
             })->implode(';');
 
             return self::$client->updateByQuery([
@@ -369,7 +369,8 @@ class Query
                 'body'      => [
                     'query'  => $this->where['query'],
                     'script' => [
-                        'inline' => $inline
+                        'inline' => $inline,
+                        'params' => $body
                     ]
                 ]
             ]);
@@ -432,7 +433,7 @@ class Query
                 'body'      => [
                     'query'  => $this->where['query'],
                     'script' => [
-                        'inline' => "ctx._source.{$field} += params.count",
+                        'inline' => "ctx._source.{$field} += count",
                         'params' => [
                             'count' => $value
                         ]
@@ -470,7 +471,7 @@ class Query
                 'body'      => [
                     'query'  => $this->where['query'],
                     'script' => [
-                        'inline' => "ctx._source.{$field} -= params.count",
+                        'inline' => "ctx._source.{$field} -= count",
                         'params' => [
                             'count' => $value
                         ]
@@ -669,7 +670,7 @@ class Query
      */
     public function searchWithScroll($scroll_id = null)
     {
-        $scroll_id = $scroll_id ?: $this->output['_scroll_id'];
+        $scroll_id = $scroll_id ?: (isset($this->output['_scroll_id']) ? $this->output['_scroll_id'] : null);
         if ($scroll_id) {
             $this->output = self::$client->scroll([
                 "scroll"    => $this->scroll_expire,
@@ -973,6 +974,7 @@ class Query
         })->toArray();
         // 总记录数
         $result['total'] = $this->output['hits']['total'];
+        isset($this->output['_scroll_id']) && $result['_scroll_id'] = $this->output['_scroll_id'];
 
         return $result;
     }
