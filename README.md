@@ -94,6 +94,9 @@ By the way, use update by query must open the script setting
 # In elasticsearch 2.3.3, allow script operate
   script.inline: true
   script.indexed: true
+  script.file: true
+  script.engine.groovy.inline.update: true
+  script.engine.groovy.inline.aggs: true
 ```
 ### 6、search for increase or decrease data
 ```php
@@ -101,6 +104,7 @@ Search::queryString('name:"海盗之王"')->increase('age');
 Search::queryString('name:"海盗之王"')->increase('age', 2);
 Search::queryString('name:"海盗之王"')->decrease('age', 3);
 ```
+Like update by query, increase or decrease also open the script setting
 ### 7、search for delete data  
 Here provide two way for delete data, 
 ```php
@@ -186,5 +190,13 @@ Or the conditions with range
 Search::range('age', [7, 18], ['gt', 'lte']);
 ```
 However, the range query has fourth parameter which use as extra action.  
+
+Here are two ways When we need paging.
+```php
+// paging style
+Search::queryString('name:"珍珠海盗"')->limit(0, 10)->search()->outputFormat();
+// scroll style
+Search::queryString('name:"珍珠海盗"')->scroll(1000, '30s', 'scan')->search()->outputFormat();
+```
 
 
