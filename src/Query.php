@@ -358,7 +358,8 @@ class Query
         }
 
         try {
-            $inline = collect($body)->map(function($item, $key) {
+            $params = $this->filterFields($body);
+            $inline = collect($params)->map(function($item, $key) {
                 return "ctx._source.{$key} = {$key}";
             })->implode(';');
 
@@ -370,7 +371,7 @@ class Query
                     'query'  => $this->where['query'],
                     'script' => [
                         'inline' => $inline,
-                        'params' => $body
+                        'params' => $params
                     ]
                 ]
             ]);
@@ -394,12 +395,24 @@ class Query
     public function insertOrUpdate($body, $id)
     {
         try {
+            $params = $this->filterFields($body);
+            $inline = collect($params)->map(function($item, $key) {
+                return "ctx._source.{$key} = {$key}";
+            })->implode(';');
+
             return self::$client->update([
-                'index' => $this->index,
-                'type'  => $this->type,
-                'id'    => $id,
-                'body'  => [
-                    'upsert' => $this->filterFields($body)
+                'index'     => $this->index,
+                'type'      => $this->type,
+                'id'        => $id,
+                'conflicts' => 'proceed',
+                'body'      => [
+                    'script' => [
+                        'inline' => $inline,
+                        'params' => $params
+                    ],
+                    'upsert' => [
+                        'id' => $id
+                    ]
                 ]
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
@@ -633,7 +646,7 @@ class Query
      * 执行查询
      *
      * @param  boolean $paging 是否分页
-     * @return $this
+     * @return array
      */
     public function search($paging = false)
     {
@@ -657,9 +670,9 @@ class Query
         }
         $this->output = self::$client->search($params);
         // 如果是滚屏或扫描，结果再次查询
-        $this->searchWithScroll();
+        $this->searchByScrollId();
 
-        return $this;
+        return $this->outputFormat();
     }
 
     /**
@@ -668,7 +681,7 @@ class Query
      *
      * @return $this
      */
-    public function searchWithScroll($scroll_id = null)
+    public function searchByScrollId($scroll_id = null)
     {
         $scroll_id = $scroll_id ?: (isset($this->output['_scroll_id']) ? $this->output['_scroll_id'] : null);
         if ($scroll_id) {
@@ -679,6 +692,29 @@ class Query
         }
 
         return $this;
+    }
+
+    /**
+     * 根据 scroll id 清理缓存数据
+     *
+     * @param  string $scroll_id
+     *
+     * @return bool
+     */
+    public function deleteByScrollId($scroll_id = null)
+    {
+        $result    = false;
+        $scroll_id = $scroll_id ?: (isset($this->output['_scroll_id']) ? $this->output['_scroll_id'] : null);
+        if ($scroll_id) {
+            $result = self::$client->clearScroll([
+                "scroll_id" => $scroll_id,
+                'client'    => [
+                    'ignore' => 404
+                ]
+            ]);
+        }
+
+        return $result;
     }
 
     /**
@@ -953,7 +989,7 @@ class Query
             return [];
         }
 
-        return collect($body)->only($this->config['index']['fields'])->all();
+        return collect($body)->only($this->config['fields'])->all();
     }
 
     /**
@@ -961,7 +997,7 @@ class Query
      *
      * @return array
      */
-    public function outputFormat()
+    protected function outputFormat()
     {
         if (!$this->output['hits']['total']) {
             return [];
