@@ -154,11 +154,11 @@ Notice: Default handle is 'index'.
 ### 10、everything is for search   
 You can select fields show for search.
 ```php
-Search::select(['name', 'age'])->search();
+Search::pluck(['name', 'age'])->search();
 ```
 Default paging is true and show the result first ten, If you don't need it
 ```php
-Search::select(['name', 'age'])->search(false);
+Search::pluck(['name', 'age'])->search(false);
 ```
 Construct the conditions with queryString, just like that
  ```php
@@ -171,6 +171,8 @@ Construct the conditions with queryString, just like that
  Or the conditions with ids
  ```php
  Search::ids([1, 2, 3]);
+ // If other field with in function
+ Search::whereIn('name', ['A', 'B', 'C']);
  ```
  Or the conditions with match
  ```php
@@ -187,11 +189,33 @@ Or the conditions with bool
 // The third parameter include must(default value), must_not, should, filter.
 Search::bool('name', 'Kyyomi', 'must_not');
 ```
+Or the conditions with null
+```php
+Search::isNull('name');
+// If need the field is not null
+Search::isNotNull('name');
+```
+Or the conditions with aggregation
+```php
+Search::max('id');
+Search::min('id');
+Search::sum('id');
+Search::avg('id');
+```
 Or the conditions with range
 ```php
 Search::range('age', [7, 18], ['gt', 'lte']);
 ```
 However, the range query has fourth parameter which use as extra action.  
+Or the conditions with where query
+```php
+Search::where('id', '=', 100)->search();
+// The same as last sentence
+Search::where('id', 100)->search();
+Search::where('id', '=', 100)->orWhere('age', '>=', 18)->search();
+// Also, we can use like query
+Search::where('name', 'like', '%天天%')->search();
+```
 
 Here are two ways When we need paging.
 ```php
@@ -202,6 +226,10 @@ Search::queryString('name:"珍珠海盗"')->scroll(1000, '30s', 'scan')->search(
 // If you want use scroll id for search or delete it
 Search::searchByScrollId('xxx');
 Search::deleteByScrollId('xxx');
+```
+And count the record, just use the count function.
+```php
+Search::queryString('name:"珍珠海盗"')->count();
 ```
 
 At last, use the debug function that output the debug message as you need. 

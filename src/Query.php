@@ -37,9 +37,16 @@ class Query
     /**
      * 查询条件
      *
-     * @var
+     * @var array
      */
     protected $where = [];
+
+    /**
+     * 聚合条件
+     *
+     * @var array
+     */
+    protected $aggregations = [];
 
     /**
      * 查询结果
@@ -53,7 +60,7 @@ class Query
      *
      * @var array
      */
-    protected $columns = ['*'];
+    protected $columns = [];
 
     /**
      * 查询限制数量
@@ -655,15 +662,23 @@ class Query
             'type'  => $this->type,
             'body'  => $this->where
         ];
+        // 是否指定字段
+        if($this->columns) {
+            $params['body']['_source']['includes'] = $this->columns;
+        }
+        // 是否使用聚合查询
+        if($this->aggregations) {
+            $params['body']['aggregations'] = $this->aggregations;
+        }
         // 是否开启分页
         if($paging) {
             $params['from'] = $this->offset;
             $params['size'] = $this->limit;
         }
         // 是否开启滚屏或者扫描
-        $this->scroll_type   && $params['search_type'] = $this->scroll_type;
-        $this->scroll_size   && $params['body']['size']        = $this->scroll_size;
-        $this->scroll_expire && $params['scroll']      = $this->scroll_expire;
+        $this->scroll_type   && $params['search_type']  = $this->scroll_type;
+        $this->scroll_size   && $params['body']['size'] = $this->scroll_size;
+        $this->scroll_expire && $params['scroll']       = $this->scroll_expire;
         // 是否设置排序
         if($this->order) {
             $params['body']['sort'] = $this->order;
@@ -671,6 +686,11 @@ class Query
         $this->output = self::$client->search($params);
         // 如果是滚屏或扫描，结果再次查询
         $this->searchByScrollId();
+
+        // 聚合查询结果特殊处理
+        if($this->aggregations) {
+            return $this->output['aggregations']['total']['value'];
+        }
 
         return $this->outputFormat();
     }
@@ -750,7 +770,7 @@ class Query
      *
      * @return $this
      */
-    public function select($columns = ['*'])
+    public function pluck(array $columns)
     {
         $this->columns = is_array($columns) ? $columns : func_get_args();
 
@@ -909,6 +929,196 @@ class Query
     }
 
     /**
+     * 包含字段查询
+     *
+     * @param string $field
+     * @param array  $value
+     *
+     * @return $this
+     */
+    public function whereIn($field, array $value)
+    {
+        $where['query']['bool']['must']['bool']['should'] = collect($value)->map(function($item) use ($field) {
+            return [
+                'match' => [
+                    $field => [
+                        'query' => $item,
+                        'type'  => 'phrase'
+                    ]
+                ]
+            ];
+        });
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 构造 where query 条件 (包含操作符 = != <> > >= < <=)
+     *
+     * @param      $field
+     * @param null $operator
+     * @param null $value
+     *
+     * @return $this
+     */
+    public function where($field, $operator = null, $value = null, $boolean = 'and')
+    {
+        // 默认操作符为 '='
+        if(null === $value) {
+            $value    = $operator;
+            $operator = '=';
+        }
+        // and 或 or 条件处理
+        $mode = 'and' === $boolean ? 'must' : 'should';
+
+        switch ($operator) {
+            case '=':
+            default:
+                $where['query']['bool']['must']['bool'][$mode]['match'][$field] = [
+                    'query' => $value,
+                    'type'  => 'phrase'
+                ];
+                break;
+
+            case '<>':
+            case '!=':
+                $where['query']['bool']['must']['bool'][$mode]['bool']['must_not']['match'][$field] = [
+                    'query' => $value,
+                    'type'  => 'phrase'
+                ];
+                break;
+
+            case '>':
+            case '>=':
+                $where['query']['bool']['must']['bool'][$mode]['range'][$field] = [
+                    'from'          => $value,
+                    'to'            => null,
+                    'include_lower' => '>=' === $operator,
+                    'include_upper' => true
+                ];
+                break;
+
+            case '<':
+            case '<=':
+                $where['query']['bool']['must']['bool'][$mode]['range'][$field] = [
+                    'from'          => null,
+                    'to'            => $value,
+                    'include_lower' => true,
+                    'include_upper' => '<=' === $operator
+                ];
+                break;
+
+            case 'like':
+                $where['query']['bool']['must']['bool'][$mode]['wildcard'][$field] = strtr($value, ['_' => '?', '%' => '*']);
+                break;
+        }
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 构造 or where query 条件
+     *
+     * @param      $field
+     * @param null $operator
+     * @param null $value
+     *
+     * @return \chenyuanqi\elasticsearch\Query
+     */
+    public function orWhere($field, $operator = null, $value = null)
+    {
+        return $this->where($field, $operator, $value, 'or');
+    }
+
+    /**
+     * 查询字段为 null
+     *
+     * @param  string $field
+     *
+     * @return $this
+     */
+    public function isNull($field)
+    {
+        $where['query']['bool']['must']['missing']['field'] = $field;
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 查询字段不为 null
+     *
+     * @param  string $field
+     *
+     * @return $this
+     */
+    public function isNotNull($field)
+    {
+        $where['query']['bool']['must']['bool']['must_not']['missing']['field'] = $field;
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 统计字段最大值
+     *
+     * @param  string $field
+     *
+     * @return array
+     */
+    public function max($field)
+    {
+        $this->aggregations['total']['max']['field'] = $field;
+
+        return $this->search();
+    }
+
+    /**
+     * 统计字段最小值
+     *
+     * @param  string $field
+     *
+     * @return array
+     */
+    public function min($field)
+    {
+        $this->aggregations['total']['min']['field'] = $field;
+
+        return $this->search();
+    }
+
+    /**
+     * 统计字段总和
+     *
+     * @param  string $field
+     *
+     * @return array
+     */
+    public function sum($field)
+    {
+        $this->aggregations['total']['sum']['field'] = $field;
+
+        return $this->search();
+    }
+
+    /**
+     * 统计字段平均值
+     *
+     * @param  string $field
+     *
+     * @return array
+     */
+    public function avg($field)
+    {
+        $this->aggregations['total']['avg']['field'] = $field;
+
+        return $this->search();
+    }
+
+    /**
      * 构造过滤条件
      *
      * @param $field
@@ -1008,7 +1218,7 @@ class Query
         $result = collect($this->output['hits']['hits'])->map(function ($item){
             $item['_source']['_id'] = $item['_id'];
 
-            return in_array('*', $this->columns, true) ? $item['_source'] : collect($item['_source'])->only($this->columns)->toArray();
+            return $item['_source'];
         })->toArray();
         // 总记录数
         $result['total'] = $this->output['hits']['total'];
