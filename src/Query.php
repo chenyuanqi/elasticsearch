@@ -629,13 +629,13 @@ class Query
     {
         try {
             return self::$client->get([
-                'index' => $this->index,
-                'type'  => $this->type,
-                'id'    => $id
+                'index'  => $this->index,
+                'type'   => $this->type,
+                'id'     => $id,
+                'client' => [
+                    'ignore' => [400, 404]
+                ]
             ]);
-        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
-            exit();
         } catch (\Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
             exit();
@@ -761,16 +761,18 @@ class Query
      * 构造 query string 查询条件
      *
      * @param  string $string 查询条件如 'package_name:"com.qq"'
+     * @param  array  $fields 指定查询域 (字段)
      *
      * @return $this
      */
-    public function queryString($string)
+    public function queryString($string, $fields = [])
     {
         $where['query'] = [
             'query_string' => [
                 'query' => $string
             ]
         ];
+        $fields && $where['query']['query_string']['fields'] = $fields;
         $this->where = array_merge_recursive($this->where, $where);
 
         return $this;
