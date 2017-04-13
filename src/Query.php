@@ -104,13 +104,6 @@ class Query
     protected $scroll_type;
 
     /**
-     * scroll 执行次数
-     *
-     * @var int
-     */
-    protected $scroll_twice;
-
-    /**
      * 获取配置，建立链接
      *
      */
@@ -201,45 +194,29 @@ class Query
     }
 
     /**
-     * 创建索引
-     *
-     * @return array
-     */
-    public function createIndex()
-    {
-        try {
-            return self::$client->indices()->create([
-                'index' => $this->index
-            ]);
-        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
-            exit();
-        } catch (\Exception $e) {
-            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
-            exit();
-        }
-    }
-
-    /**
      * 输出调试信息
      */
     public function debug()
     {
-        dd(self::$client->transport->getConnection()->getLastRequestInfo());
+        if(\Config::get('elasticsearch.debug_mode', 'false')) {
+            dd(self::$client->transport->getConnection()->getLastRequestInfo());
+        }
     }
 
-
     /**
-     * 创建映射
+     * 创建映射 (包含 index 配置)
      *
      * @return array
      */
     public function createMapping()
     {
         try {
+            $setting = \Config::get('elasticsearch.'.$this->index.'.setting', []);
+
             return self::$client->indices()->create([
                 'index' => $this->index,
                 'body'  => [
+                    'setting'  => $setting,
                     'mappings' => $this->config['mappings']
                 ]
             ]);
@@ -693,6 +670,16 @@ class Query
         }
 
         return $this->outputFormat();
+    }
+
+    /**
+     * 使用分析器
+     *
+     * @return \chenyuanqi\elasticsearch\Analyze
+     */
+    public function analyze()
+    {
+        return new Analyze();
     }
 
     /**

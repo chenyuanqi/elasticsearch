@@ -1,5 +1,6 @@
 # elasticsearch-service for laravel5
-This package depends on "elasticsearch/elasticsearch" and it provides a unified API across a variety of different full text search services.
+This package depends on "elasticsearch/elasticsearch" and it provides a unified API across a variety of different full text search services.  
+> Notice: just test for elasticsearch 2.3.3 
 
 ## Structure 
 ├── Commands  
