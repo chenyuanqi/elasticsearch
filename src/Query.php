@@ -172,6 +172,29 @@ class Query
     }
 
     /**
+     * 获取索引状态
+     *
+     * @return mixed
+     */
+    public function getStats()
+    {
+        $stats = $this->getClient()->indices()->stats();
+        return $stats['indices'][$this->index];
+    }
+
+    /**
+     * 获取分片数量
+     *
+     * @return int
+     */
+    public function getShardsNumber()
+    {
+        $settings = \Config::get('elasticsearch.'.$this->index.'.settings', []);
+
+        return isset($settings['number_of_shards']) ? $settings['number_of_shards'] : 5;
+    }
+
+    /**
      * 批量处理限制次数
      *
      * @return mixed
@@ -213,12 +236,12 @@ class Query
     public function createMapping()
     {
         try {
-            $setting = \Config::get('elasticsearch.'.$this->index.'.setting', []);
+            $settings = \Config::get('elasticsearch.'.$this->index.'.settings', []);
 
             return $this->getClient()->indices()->create([
                 'index' => $this->index,
                 'body'  => [
-                    'settings' => $setting,
+                    'settings' => $settings,
                     'mappings' => $this->config['mappings']
                 ]
             ]);
@@ -666,7 +689,9 @@ class Query
         }
         $this->output = $this->getClient()->search($params);
         // 如果是滚屏或扫描，结果再次查询
-        $this->searchByScrollId();
+        if(isset($this->output['_scroll_id'])) {
+            $this->searchByScrollId($this->output['_scroll_id']);
+        }
 
         // 聚合查询结果特殊处理
         if($this->aggregations) {
@@ -694,7 +719,6 @@ class Query
      */
     public function searchByScrollId($scroll_id = null)
     {
-        $scroll_id = $scroll_id ?: (isset($this->output['_scroll_id']) ? $this->output['_scroll_id'] : null);
         if ($scroll_id) {
             $this->output = $this->getClient()->scroll([
                 "scroll"    => $this->scroll_expire,
@@ -757,11 +781,11 @@ class Query
     /**
      * 选择展示字段，默认所有
      *
-     * @param array $columns
+     * @param  mixed $columns
      *
      * @return $this
      */
-    public function pluck(array $columns)
+    public function pluck($columns)
     {
         $this->columns = is_array($columns) ? $columns : func_get_args();
 
@@ -1156,7 +1180,7 @@ class Query
      */
     public function scroll($size = 1000, $expire = '30s', $type = '')
     {
-        $this->scroll_size   = $size;
+        $this->scroll_size   = $size / $this->getShardsNumber();
         $this->scroll_expire = $expire;
         $this->scroll_type   = $type;
 
@@ -1200,9 +1224,9 @@ class Query
      *
      * @return array
      */
-    protected function outputFormat()
+    public function outputFormat()
     {
-        if (!$this->output['hits']['total']) {
+        if (0 === count($this->output['hits']['hits'])) {
             return [];
         }
         // 格式化处理
