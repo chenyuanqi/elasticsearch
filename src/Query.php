@@ -110,23 +110,12 @@ class Query
     public function __construct()
     {
         // 默认索引及类型判断
-        if (!isset($this->type)) {
+        if (!isset($this->index)) {
             $this->index = \Config::get('elasticsearch.default_index', 'default');
         }
         if (!isset($this->type)) {
             $this->type = \Config::get('elasticsearch.default_type', 'default');
         }
-
-        // 获取索引配置
-        $config       = \Config::get('elasticsearch.'.$this->index, []);
-        if(!isset($config['indices'][$this->type])) {
-            echo 'Keep the configure right, please!';
-            exit();
-        }
-
-        // 类型下的配置
-        $this->config = $config['indices'][$this->type];
-        static::$client = ClientBuilder::create()->setHosts($config['connection'])->build();
     }
 
     /**
@@ -166,6 +155,19 @@ class Query
      */
     public function getClient()
     {
+        if (null === static::$client) {
+            // 获取索引配置
+            $config = \Config::get('elasticsearch.'.$this->index, []);
+            if (!isset($config['indices'][$this->type])) {
+                echo 'Keep the configure right, please!';
+                exit();
+            }
+
+            // 类型下的配置
+            $this->config   = $config['indices'][$this->type];
+            static::$client = ClientBuilder::create()->setHosts($config['connection'])->build();
+        }
+
         return static::$client;
     }
 
@@ -199,7 +201,7 @@ class Query
     public function debug()
     {
         if(\Config::get('elasticsearch.debug_mode', 'false')) {
-            dd(self::$client->transport->getConnection()->getLastRequestInfo());
+            dd($this->getClient()->transport->getConnection()->getLastRequestInfo());
         }
     }
 
@@ -213,10 +215,10 @@ class Query
         try {
             $setting = \Config::get('elasticsearch.'.$this->index.'.setting', []);
 
-            return self::$client->indices()->create([
+            return $this->getClient()->indices()->create([
                 'index' => $this->index,
                 'body'  => [
-                    'setting'  => $setting,
+                    'settings' => $setting,
                     'mappings' => $this->config['mappings']
                 ]
             ]);
@@ -237,10 +239,13 @@ class Query
     public function updateMapping()
     {
         try {
-            return self::$client->indices()->putMapping([
+            return $this->getClient()->indices()->putMapping([
                 'index' => $this->index,
                 'type'  => $this->type,
-                'body'  => $this->config['mappings']
+                'body'  => [
+                    'mapping' => $this->config['mappings']
+                 ]
+
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
@@ -259,7 +264,7 @@ class Query
     public function deleteMapping()
     {
         try {
-            return self::$client->indices()->deleteMapping([
+            return $this->getClient()->indices()->deleteMapping([
                 'index' => $this->index,
                 'type'  => $this->type,
             ]);
@@ -290,7 +295,7 @@ class Query
             ];
             $id && $params['id'] = $id;
 
-            return self::$client->create($params);
+            return $this->getClient()->create($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
             exit();
@@ -311,7 +316,7 @@ class Query
     public function updateById(array $body, $id)
     {
         try {
-            return self::$client->update([
+            return $this->getClient()->update([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'id'    => $id,
@@ -347,7 +352,7 @@ class Query
                 return "ctx._source.{$key} = {$key}";
             })->implode(';');
 
-            return self::$client->updateByQuery([
+            return $this->getClient()->updateByQuery([
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
@@ -384,7 +389,7 @@ class Query
                 return "ctx._source.{$key} = {$key}";
             })->implode(';');
 
-            return self::$client->update([
+            return $this->getClient()->update([
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'id'        => $id,
@@ -423,7 +428,7 @@ class Query
         }
 
         try {
-            return self::$client->updateByQuery([
+            return $this->getClient()->updateByQuery([
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
@@ -461,7 +466,7 @@ class Query
         }
 
         try {
-            return self::$client->updateByQuery([
+            return $this->getClient()->updateByQuery([
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
@@ -494,7 +499,7 @@ class Query
     public function deleteById($id)
     {
         try {
-            return self::$client->delete([
+            return $this->getClient()->delete([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'id'    => $id
@@ -520,7 +525,7 @@ class Query
         }
 
         try {
-            return self::$client->deleteByQuery([
+            return $this->getClient()->deleteByQuery([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'body'  => $this->where
@@ -542,7 +547,7 @@ class Query
     public function truncate()
     {
         try {
-            return self::$client->indices()->delete([
+            return $this->getClient()->indices()->delete([
                 'index' => $this->index
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
@@ -592,7 +597,7 @@ class Query
                 }
             }
 
-            return self::$client->bulk($params);
+            return $this->getClient()->bulk($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
             exit();
@@ -612,7 +617,7 @@ class Query
     public function find($id)
     {
         try {
-            return self::$client->get([
+            return $this->getClient()->get([
                 'index'  => $this->index,
                 'type'   => $this->type,
                 'id'     => $id,
@@ -660,7 +665,7 @@ class Query
         if($this->order) {
             $params['body']['sort'] = $this->order;
         }
-        $this->output = self::$client->search($params);
+        $this->output = $this->getClient()->search($params);
         // 如果是滚屏或扫描，结果再次查询
         $this->searchByScrollId();
 
@@ -692,7 +697,7 @@ class Query
     {
         $scroll_id = $scroll_id ?: (isset($this->output['_scroll_id']) ? $this->output['_scroll_id'] : null);
         if ($scroll_id) {
-            $this->output = self::$client->scroll([
+            $this->output = $this->getClient()->scroll([
                 "scroll"    => $this->scroll_expire,
                 "scroll_id" => $scroll_id
             ]);
@@ -713,7 +718,7 @@ class Query
         $result    = false;
         $scroll_id = $scroll_id ?: (isset($this->output['_scroll_id']) ? $this->output['_scroll_id'] : null);
         if ($scroll_id) {
-            $result = self::$client->clearScroll([
+            $result = $this->getClient()->clearScroll([
                 "scroll_id" => $scroll_id,
                 'client'    => [
                     'ignore' => 404
