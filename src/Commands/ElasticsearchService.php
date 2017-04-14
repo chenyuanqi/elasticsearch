@@ -128,7 +128,6 @@ class ElasticsearchService extends Command
         $this->info('更新映射开始');
         $index = (new Builder)->index($this->name)->type($this->type);
         $index->updateMapping();
-        $index->debug();
         $this->info('更新映射结束');
     }
 
