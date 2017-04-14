@@ -18,7 +18,7 @@ class ElasticsearchService extends Command
      *
      * @var string
      */
-    protected $signature = 'elastic:search {name} {action}';
+    protected $signature = 'elastic:search {name} {type} {action}';
 
     /**
      * 命令描述
@@ -33,6 +33,13 @@ class ElasticsearchService extends Command
      * @var string
      */
     protected $name;
+
+    /**
+     * 索引类型名称
+     *
+     * @var string
+     */
+    protected $type;
 
     /**
      * 操作名称
@@ -59,6 +66,7 @@ class ElasticsearchService extends Command
     {
         $start        = microtime(true);
         $this->name   = $this->argument('name');
+        $this->type   = $this->argument('type');
         $this->action = $this->argument('action');
 
         if (!\Config::get('elasticsearch.'.$this->name, [])) {
@@ -99,7 +107,7 @@ class ElasticsearchService extends Command
     protected function mapping()
     {
         $this->info('新建索引及映射开始');
-        $index = (new Builder)->index($this->name);
+        $index = (new Builder)->index($this->name)->type($this->type);
         $index->createMapping();
         $this->info('新建索引及映射结束');
     }
@@ -112,7 +120,7 @@ class ElasticsearchService extends Command
     protected function updateMapping()
     {
         $this->info('更新映射开始');
-        $index = (new Builder)->index($this->name);
+        $index = (new Builder)->index($this->name)->type($this->type);
         $index->updateMapping();
         $this->info('更新映射结束');
     }
@@ -125,7 +133,7 @@ class ElasticsearchService extends Command
     protected function bulk()
     {
         $this->info('批量写入数据开始');
-        $index = (new Builder)->index($this->name);
+        $index = (new Builder)->index($this->name)->type($this->type);
         $model = $index->getModel();
         $limit = $index->getLimitByConfig();
 
@@ -151,7 +159,7 @@ class ElasticsearchService extends Command
     protected function clear()
     {
         $this->info(sprintf('清除 %s 索引开始', $this->name));
-        $index = (new Builder)->index($this->name);
+        $index = (new Builder)->index($this->name)->type($this->type);
         $index->truncate();
         $this->info(sprintf('清除 %s 索引结束', $this->name));
     }
