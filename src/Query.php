@@ -149,12 +149,15 @@ class Query
     }
 
     /**
-     * 获取链接 (外部使用)
+     * 获取 elastic 链接
      *
      * @return mixed
      */
     public function getClient()
     {
+        // 清空原有条件
+        $this->where = [];
+
         if (null === static::$client) {
             // 获取索引配置
             $config = \Config::get('elasticsearch.'.$this->index, []);
@@ -246,10 +249,10 @@ class Query
                 ]
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
-            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            echo $e->getCode().': '.$e->getMessage()."\n";
             exit();
         } catch (\Exception $e) {
-            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            echo $e->getCode().': '.$e->getMessage()."\n";
             exit();
         }
     }
@@ -601,12 +604,20 @@ class Query
             foreach ($data as $item) {
                 $allowOperation = ['index', 'create', 'update', 'delete'];
                 $type           = isset($item[0]) && in_array($item[0], $allowOperation, true) ? $item[0] : 'index';
+                $id             = isset($item['_id']) ? $item['_id'] : (isset($item['id']) ? $item['id'] : false);
 
-                $params['body'][][$type] = [
-                    '_index' => $this->index,
-                    '_type'  => $this->type,
-                    '_id'    => $item['_id']
-                ];
+                if (!$id) {
+                    $params['body'][][$type] = [
+                        '_index' => $this->index,
+                        '_type'  => $this->type
+                    ];
+                } else {
+                    $params['body'][][$type] = [
+                        '_index' => $this->index,
+                        '_type'  => $this->type,
+                        '_id'    => $id
+                    ];
+                }
 
                 if('delete' === $type) {
                     continue;
@@ -759,7 +770,7 @@ class Query
      */
     public function first()
     {
-        $output = $this->search()->outputFormat();
+        $output = $this->search();
 
         return isset($output[0]) ? $output[0] : [];
     }
