@@ -1,6 +1,9 @@
 <?php
 
 return [
+    // 调试模式
+    'debug_mode'    => true,
+
     // 默认索引 (相当于数据库的名称)
     'default_index' => 'default',
     // 默认类型 (相当于数据表的名称)
