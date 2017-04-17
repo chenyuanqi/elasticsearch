@@ -14,7 +14,7 @@ class ElasticsearchService extends Command
 {
     /**
      * 命令名称及参数
-     * name 为索引配置名称，action 为操作名称 [new update bulk clear]
+     * name 为索引配置名称，action 为操作名称 [new update bulk copy clear]
      *
      * @var string
      */
@@ -58,7 +58,7 @@ class ElasticsearchService extends Command
     }
 
     /**
-     * Execute the console command.
+     * 执行处理
      *
      * @return mixed
      */
@@ -86,8 +86,8 @@ class ElasticsearchService extends Command
                     break;
 
                 case 'copy':
-                    $name = $this->name = $this->argument('copy_name');
-                    $type = $this->type = $this->argument('copy_type');
+                    $name = $this->argument('copy_name');
+                    $type = $this->argument('copy_type');
                     $this->copy($name, $type);
                     break;
 
