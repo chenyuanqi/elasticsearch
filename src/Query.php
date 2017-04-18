@@ -602,9 +602,10 @@ class Query
             $params['body'] = [];
             // 构造 body
             foreach ($data as $item) {
-                $allowOperation = ['index', 'create', 'update', 'delete'];
-                $type           = isset($item[0]) && in_array($item[0], $allowOperation, true) ? $item[0] : 'index';
-                $id             = isset($item['_id']) ? $item['_id'] : (isset($item['id']) ? $item['id'] : false);
+                $allow_operation = ['index', 'create', 'update', 'delete'];
+                $type            = isset($item[0]) && in_array($item[0], $allow_operation, true) ? $item[0] : 'index';
+                $item_id         = isset($item['id']) ? $item['id'] : 0;
+                $id              = isset($item['_id']) ? $item['_id'] : $item_id;
 
                 if (!$id) {
                     $params['body'][][$type] = [
@@ -699,7 +700,7 @@ class Query
             $params['body']['sort'] = $this->order;
         }
         $this->output = $this->getClient()->search($params);
-        // 如果是滚屏或扫描，结果再次查询
+        // 如果是滚屏或扫描，结果需再次查询
         if(isset($this->output['_scroll_id'])) {
             $this->searchByScrollId($this->output['_scroll_id']);
         }
@@ -749,11 +750,12 @@ class Query
      */
     public function deleteByScrollId($scroll_id = null)
     {
-        $result    = false;
-        $scroll_id = $scroll_id ?: (isset($this->output['_scroll_id']) ? $this->output['_scroll_id'] : null);
+        $result           = false;
+        $output_scroll_id = isset($this->output['_scroll_id']) ? $this->output['_scroll_id'] : null;
+        $scroll_id        = $scroll_id ?: $output_scroll_id;
         if ($scroll_id) {
             $result = $this->getClient()->clearScroll([
-                "scroll_id" => $scroll_id,
+                'scroll_id' => $scroll_id,
                 'client'    => [
                     'ignore' => 404
                 ]
