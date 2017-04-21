@@ -14,6 +14,13 @@ class Query
     protected static $client;
 
     /**
+     * 是否使用 laravel 框架
+     *
+     * @var
+     */
+    protected $is_laravel;
+
+    /**
      * 索引配置
      *
      * @var
@@ -106,16 +113,12 @@ class Query
     /**
      * 获取配置，建立链接
      *
+     * @param boolean $is_laravel
+     *
      */
-    public function __construct()
+    public function __construct($is_laravel = true)
     {
-        // 默认索引及类型判断
-        if (!isset($this->index)) {
-            $this->index = \Config::get('elasticsearch.default_index', 'default');
-        }
-        if (!isset($this->type)) {
-            $this->type = \Config::get('elasticsearch.default_type', 'default');
-        }
+        $this->is_laravel = $is_laravel;
     }
 
     /**
@@ -154,19 +157,27 @@ class Query
     public function getClient()
     {
         // 清空原有条件
-        $this->where = [];
+        $this->where  = [];
+
+        $this->config = $this->is_laravel ? \Config::get('elasticsearch') : include(__DIR__.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'elasticsearch.php');
+
+        // 默认索引及类型判断
+        if (null === $this->index) {
+            $this->index = array_get($this->config, 'default_index', 'default');
+        }
+        if (null === $this->type) {
+            $this->type = array_get($this->config, 'default_type', 'default');
+        }
 
         if (null === static::$client) {
             // 获取索引配置
-            $config = \Config::get('elasticsearch.'.$this->index, []);
-            if (!isset($config['indices'][$this->type])) {
-                echo 'Keep the configure right, please!';
+            $config = array_get($this->config, $this->index.'.indices.'.$this->type, []);
+            if (empty($config)) {
+                echo "You must keep the configure right, please~ \n";
                 exit();
             }
 
-            // 类型下的配置
-            $this->config   = $config['indices'][$this->type];
-            static::$client = ClientBuilder::create()->setHosts($config['connection'])->build();
+            static::$client = ClientBuilder::create()->setHosts(array_get($this->config, $this->index.'.connection', []))->build();
         }
 
         return static::$client;
@@ -190,7 +201,8 @@ class Query
      */
     public function getShardsNumber()
     {
-        $settings = \Config::get('elasticsearch.'.$this->index.'.settings', []);
+        $this->getClient();
+        $settings = array_get($this->config, $this->index.'.settings', []);
 
         return isset($settings['number_of_shards']) ? $settings['number_of_shards'] : 5;
     }
@@ -204,7 +216,7 @@ class Query
     {
         $this->getClient();
 
-        return array_get($this->config, 'limit', 10000);
+        return array_get($this->config, $this->index.'.indices.'.$this->type.'.limit', 10000);
     }
 
     /**
@@ -215,7 +227,7 @@ class Query
     public function getModel()
     {
         $this->getClient();
-        if($model = array_get($this->config, 'model', '')) {
+        if ($model = array_get($this->config, $this->index.'.indices.'.$this->type.'.model', '')) {
             return new $model;
         }
 
@@ -227,9 +239,21 @@ class Query
      */
     public function debug()
     {
-        if(\Config::get('elasticsearch.debug_mode', 'false')) {
+        if(array_get($this->config, 'debug_mode', 'false')) {
             dd($this->getClient()->transport->getConnection()->getLastRequestInfo());
         }
+    }
+
+    /**
+     * 输出 curl 请求信息
+     */
+    public function toCurl()
+    {
+        $info         = $this->getClient()->transport->getConnection()->getLastRequestInfo();
+        $request_info = $info['request'];
+
+        echo "curl -X{$request_info['http_method']} '{$request_info['scheme']}://{$request_info['headers']['host'][0]}{$request_info['uri']}?pretty' -d '{$request_info['body']}'\n";
+        exit();
     }
 
     /**
@@ -239,14 +263,27 @@ class Query
      */
     public function createMapping()
     {
-        try {
-            $settings = \Config::get('elasticsearch.'.$this->index.'.settings', []);
+        $client   = $this->getClient();
+        $settings = array_get($this->config, $this->index.'.settings', []);
+        $mapping  = array_get($this->config, $this->index.'.indices.'.$this->type.'.mappings', []);
 
-            return $this->getClient()->indices()->create([
+        dd($client->indices()->create([
+            'index' => $this->index,
+            'body'  => [
+                'settings' => $settings,
+                'mappings' => $mapping
+            ]
+        ]));
+        try {
+            $client   = $this->getClient();
+            $settings = array_get($this->config, $this->index.'.settings', []);
+            $mapping  = array_get($this->config, $this->index.'.indices.'.$this->type.'.mappings', []);
+
+            return $client->indices()->create([
                 'index' => $this->index,
                 'body'  => [
                     'settings' => $settings,
-                    'mappings' => $this->config['mappings']
+                    'mappings' => $mapping
                 ]
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
@@ -266,11 +303,14 @@ class Query
     public function updateMapping()
     {
         try {
-            return $this->getClient()->indices()->putMapping([
+            $client  = $this->getClient();
+            $mapping = array_get($this->config, $this->index.'.indices.'.$this->type.'.mappings', []);
+
+            return $client->indices()->putMapping([
                 'index' => $this->index,
                 'type'  => $this->type,
                 'body'  => [
-                    'mappings' => $this->config['mappings']
+                    'mappings' => $mapping
                 ]
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
@@ -314,6 +354,7 @@ class Query
     public function insert($body, $id = '')
     {
         try {
+            $client = $this->getClient();
             $params = [
                 'index' => $this->index,
                 'type'  => $this->type,
@@ -321,7 +362,7 @@ class Query
             ];
             $id && $params['id'] = $id;
 
-            return $this->getClient()->create($params);
+            return $client->create($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
             exit();
@@ -373,12 +414,13 @@ class Query
         }
 
         try {
+            $client = $this->getClient();
             $params = $this->filterFields($body);
             $inline = collect($params)->map(function($item, $key) {
                 return "ctx._source.{$key} = {$key}";
             })->implode(';');
 
-            return $this->getClient()->updateByQuery([
+            return $client->updateByQuery([
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
@@ -410,12 +452,13 @@ class Query
     public function insertOrUpdate($body, $id)
     {
         try {
+            $client = $this->getClient();
             $params = $this->filterFields($body);
             $inline = collect($params)->map(function($item, $key) {
                 return "ctx._source.{$key} = {$key}";
             })->implode(';');
 
-            return $this->getClient()->update([
+            return $client->update([
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'id'        => $id,
@@ -601,6 +644,7 @@ class Query
 
         try {
             $params['body'] = [];
+            $client         = $this->getClient();
             // 构造 body
             foreach ($data as $item) {
                 $allow_operation = ['index', 'create', 'update', 'delete'];
@@ -632,7 +676,7 @@ class Query
                 }
             }
 
-            return $this->getClient()->bulk($params);
+            return $client->bulk($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
             exit();
@@ -962,12 +1006,16 @@ class Query
      *
      * @param string $field
      * @param array  $value
+     * @param string $boolean
      *
      * @return $this
      */
-    public function whereIn($field, array $value)
+    public function whereIn($field, array $value, $boolean = 'and')
     {
-        $where['query']['bool']['must']['bool']['should'] = collect($value)->map(function($item) use ($field) {
+        // and 或 or 条件处理
+        $mode = 'and' === $boolean ? 'must' : 'should';
+
+        $where['query']['bool']['must']['bool'][$mode][]['bool']['should'] = collect($value)->map(function($item) use ($field) {
             return [
                 'match' => [
                     $field => [
@@ -976,7 +1024,36 @@ class Query
                     ]
                 ]
             ];
-        });
+        })->toArray();
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 不包含字段查询
+     *
+     * @param string $field
+     * @param array  $value
+     * @param string $boolean
+     *
+     * @return $this
+     */
+    public function whereNotIn($field, array $value, $boolean = 'and')
+    {
+        // and 或 or 条件处理
+        $mode = 'and' === $boolean ? 'must' : 'should';
+
+        $where['query']['bool']['must']['bool'][$mode][]['bool']['must_not']['bool']['should'] = collect($value)->map(function($item) use ($field) {
+            return [
+                'match' => [
+                    $field => [
+                        'query' => $item,
+                        'type'  => 'phrase'
+                    ]
+                ]
+            ];
+        })->toArray();
         $this->where = array_merge_recursive($this->where, $where);
 
         return $this;
@@ -1004,7 +1081,7 @@ class Query
         switch ($operator) {
             case '=':
             default:
-                $where['query']['bool']['must']['bool'][$mode]['match'][$field] = [
+                $where['query']['bool']['must']['bool'][$mode][]['match'][$field] = [
                     'query' => $value,
                     'type'  => 'phrase'
                 ];
@@ -1012,7 +1089,7 @@ class Query
 
             case '<>':
             case '!=':
-                $where['query']['bool']['must']['bool'][$mode]['bool']['must_not']['match'][$field] = [
+                $where['query']['bool']['must']['bool'][$mode][]['bool']['must_not']['match'][$field] = [
                     'query' => $value,
                     'type'  => 'phrase'
                 ];
@@ -1020,7 +1097,7 @@ class Query
 
             case '>':
             case '>=':
-                $where['query']['bool']['must']['bool'][$mode]['range'][$field] = [
+                $where['query']['bool']['must']['bool'][$mode][]['range'][$field] = [
                     'from'          => $value,
                     'to'            => null,
                     'include_lower' => '>=' === $operator,
@@ -1030,7 +1107,7 @@ class Query
 
             case '<':
             case '<=':
-                $where['query']['bool']['must']['bool'][$mode]['range'][$field] = [
+                $where['query']['bool']['must']['bool'][$mode][]['range'][$field] = [
                     'from'          => null,
                     'to'            => $value,
                     'include_lower' => true,
@@ -1039,7 +1116,7 @@ class Query
                 break;
 
             case 'like':
-                $where['query']['bool']['must']['bool'][$mode]['wildcard'][$field] = strtr($value, ['_' => '?', '%' => '*']);
+                $where['query']['bool']['must']['bool'][$mode][]['wildcard'][$field] = strtr($value, ['_' => '?', '%' => '*']);
                 break;
         }
         $this->where = array_merge_recursive($this->where, $where);
@@ -1062,15 +1139,77 @@ class Query
     }
 
     /**
+     * 构造 between where query 条件
+     *
+     * @param        $field
+     * @param array  $value
+     * @param string $boolean
+     *
+     * @return \chenyuanqi\elasticsearch\Query
+     */
+    public function whereBetween($field, array $value, $boolean = 'and')
+    {
+        if(!isset($value[1])) {
+            return $this;
+        }
+
+        // and 或 or 条件处理
+        $mode = 'and' === $boolean ? 'must' : 'should';
+
+        $where['query']['bool']['must']['bool'][$mode][]['range'][$field] = [
+            'from'          => $value[0],
+            'to'            => $value[1],
+            'include_lower' => true,
+            'include_upper' => true
+        ];
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 构造 not between where query 条件
+     *
+     * @param        $field
+     * @param array  $value
+     * @param string $boolean
+     *
+     * @return \chenyuanqi\elasticsearch\Query
+     */
+    public function whereNotBetween($field, array $value, $boolean = 'and')
+    {
+        if(!isset($value[1])) {
+            return $this;
+        }
+
+        // and 或 or 条件处理
+        $mode = 'and' === $boolean ? 'must' : 'should';
+
+        $where['query']['bool']['must']['bool'][$mode][]['bool']['must_not']['range'][$field] = [
+            'from'          => $value[0],
+            'to'            => $value[1],
+            'include_lower' => true,
+            'include_upper' => true
+        ];
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
      * 查询字段为 null
      *
      * @param  string $field
+     * @param  string $boolean
      *
      * @return $this
      */
-    public function isNull($field)
+    public function isNull($field, $boolean = 'and')
     {
-        $where['query']['bool']['must']['missing']['field'] = $field;
+        // and 或 or 条件处理
+        $mode = 'and' === $boolean ? 'must' : 'should';
+
+        $where['query']['bool']['must']['bool'][$mode][]['missing']['field'] = $field;
         $this->where = array_merge_recursive($this->where, $where);
 
         return $this;
@@ -1080,12 +1219,16 @@ class Query
      * 查询字段不为 null
      *
      * @param  string $field
+     * @param  string $boolean
      *
      * @return $this
      */
-    public function isNotNull($field)
+    public function isNotNull($field, $boolean = 'and')
     {
-        $where['query']['bool']['must']['bool']['must_not']['missing']['field'] = $field;
+        // and 或 or 条件处理
+        $mode = 'and' === $boolean ? 'must' : 'should';
+
+        $where['query']['bool']['must']['bool'][$mode][]['bool']['must_not']['missing']['field'] = $field;
         $this->where = array_merge_recursive($this->where, $where);
 
         return $this;
@@ -1229,8 +1372,9 @@ class Query
         if (!$body) {
             return [];
         }
+        $fields = array_get($this->config, $this->index.'.indices.'.$this->type.'.fields', []);
 
-        return collect($body)->only($this->config['fields'])->all();
+        return collect($body)->only($fields)->all();
     }
 
     /**
