@@ -256,7 +256,7 @@ Search::toCurl();
 Notice: you must output the message after search.  
 
 ## Others Usage
-You know, it uses the facade design pattern above all of ***laravel usage***.  
+You know, it uses the facade design pattern above all of [laravel usage](https://github.com/chenyuanqi/elasticsearch#laravel-usage).  
 So in here, just replace the Search object like that:
 ```php
 use chenyuanqi\elasticsearch\Builder;
