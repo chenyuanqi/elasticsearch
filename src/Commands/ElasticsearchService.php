@@ -138,12 +138,15 @@ class ElasticsearchService extends Command
      */
     protected function bulk()
     {
+        // 避免内存消耗过大而终止执行
+        ini_set('memory_limit', '-1');
+
         $this->info('批量写入数据开始');
         $index = (new Builder)->index($this->name)->type($this->type);
         $model = $index->getModel();
         $limit = $index->getLimitByConfig();
 
-        $model->chunk($limit, function ($datas) use ($index){
+        $model->where('status', 'show')->chunk($limit, function ($datas) use ($index){
             $params = collect($datas)->map(function ($data) use ($index){
                 $item        = $data->toArray();
                 $item['_id'] = sprintf('%s', $data->id);
