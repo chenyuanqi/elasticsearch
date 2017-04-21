@@ -127,7 +127,6 @@ class Query
      */
     public function index($index = null)
     {
-
         $this->index = $index;
 
         return $this;
@@ -142,7 +141,6 @@ class Query
      */
     public function type($type = null)
     {
-
         $this->type = $type;
 
         return $this;
@@ -204,6 +202,8 @@ class Query
      */
     public function getLimitByConfig()
     {
+        $this->getClient();
+
         return array_get($this->config, 'limit', 10000);
     }
 
@@ -214,6 +214,7 @@ class Query
      */
     public function getModel()
     {
+        $this->getClient();
         if($model = array_get($this->config, 'model', '')) {
             return new $model;
         }
