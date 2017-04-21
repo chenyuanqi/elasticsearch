@@ -2,10 +2,14 @@
 
 namespace chenyuanqi\elasticsearch;
 
-use Config;
-
 class Builder
 {
+    /**
+     * 是否使用 laravel 框架 (默认使用)
+     * @var bool
+     */
+    protected static $is_laravel = true;
+
     /**
      * query 单例
      *
@@ -13,8 +17,9 @@ class Builder
      */
     protected static $query;
 
-    public function __construct()
+    public function __construct($is_laravel = true)
     {
+        static::$is_laravel = $is_laravel;
     }
 
     /**
@@ -24,12 +29,11 @@ class Builder
      */
     public static function query()
     {
-        if (!isset(static::$query)) {
-            static::$query = new Query();
+        if (null === static::$query) {
+            static::$query = new Query(static::$is_laravel);
         }
 
         return static::$query;
-
     }
 
     /**
