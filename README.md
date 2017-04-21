@@ -1,7 +1,15 @@
-# elasticsearch-service for laravel5
+# chenyuanqi/elasticsearch not only for laravel5
 This package depends on "elasticsearch/elasticsearch" and it provides a unified API across a variety of different full text search services.  
-> Notice: just test for elasticsearch 2.3.3 
+> Notice: just test for elasticsearch 2.3.3  
 
+The following dependencies are needed for the listed search drivers:
+```json
+{
+"php": ">=5.5.0",
+"illuminate/support": "~5.1",
+"elasticsearch/elasticsearch": "~2.0"
+}
+```
 ## Structure 
 ├── Commands  
 │   └── ElasticsearchService.php  
@@ -14,7 +22,16 @@ This package depends on "elasticsearch/elasticsearch" and it provides a unified 
 └── SearchServiceProvider.php  
 
 ## Suggestion
-For safety reasons, please install the plugin: [shield](https://www.elastic.co/downloads/shield "shield")   
+For safety reasons, please install the plugin: [shield](https://www.elastic.co/downloads/shield "shield")  
+For search effectively, these plugins may be useful for you:  
+1、[head](https://github.com/mobz/elasticsearch-head)  
+2、[bigdesk](https://github.com/hlstudio/bigdesk)  
+3、[kopt](https://github.com/lmenezes/elasticsearch-kopf)  
+4、[sql](https://github.com/NLPchina/elasticsearch-sql)  
+5、[ik](https://github.com/medcl/elasticsearch-analysis-ik)  
+6、[pinyin](https://github.com/gitchennan/elasticsearch-analysis-lc-pinyin)  
+7、[同义词](https://github.com/bells/elasticsearch-analysis-dynamic-synonym)  
+8、[简繁转换](https://github.com/medcl/elasticsearch-analysis-stconvert)  
 ## Install
  You can edit composer.json file, in the require object:
  ```json
@@ -26,8 +43,8 @@ Or use composer command:
 ```bash
 composer require chenyuanqi/elasticsearch
 ```
-After that, run composer update to install this package.
-Add now, the service provider to app/config/app.php, within the providers array.
+After that, run composer update to install this package.  
+Actually, it was finished but in ***laravel5*** that you still let the service provider to app/config/app.php, within the providers array.
 ```php
 'providers' => [
 	// elasticsearch service
@@ -42,19 +59,12 @@ Add a class alias to app/config/app.php, within the aliases array.
 ],
 ```
 ## Configure
-Publish the default config file to your application then make modifications as you can.
+In ***laravel5***, publish the default config file to your application then make modifications as you can.
 ```bash
 php artisan vendor:publish
 ```
-The following dependencies are needed for the listed search drivers:
-```json
-{
-"php": ">=5.5.0",
-"illuminate/support": "~5.1",
-"elasticsearch/elasticsearch": "~2.0"
-}
-```
-## Usage
+However, default config file is _config/elasticsearch.php_.  
+## Laravel Usage
 ### 1、search for create index
 ```php
 Search::createIndex();
@@ -172,8 +182,9 @@ Construct the conditions with queryString, just like that
  Or the conditions with ids
  ```php
  Search::ids([1, 2, 3]);
- // If other field with in function
+ // If other field with in or not in function
  Search::whereIn('name', ['A', 'B', 'C']);
+ Search::whereNotIn('name', ['A', 'B', 'C']);
  ```
  Or the conditions with match
  ```php
@@ -216,6 +227,8 @@ Search::where('id', 100)->search();
 Search::where('id', '=', 100)->orWhere('age', '>=', 18)->search();
 // Also, we can use like query
 Search::where('name', 'like', '%天天%')->search();
+// any more where function like whereBetween, whereNotBetween
+Search::whereBetween('id', [1, 2]);
 ```
 
 Here are two ways When we need paging.
@@ -237,7 +250,16 @@ At last, use the debug function that output the debug message as you need.
 ```php
 Search::queryString('name:"珍珠海盗"')->search();
 Search::debug();
+// If you need curl sentence, do it
+Search::toCurl();
 ```
+Notice: you must output the message after search.  
 
-
-
+## Others Usage
+You know, it uses the facade design pattern above all of ***laravel usage***.  
+So in here, just replace the Search object like that:
+```php
+use chenyuanqi\elasticsearch\Builder;
+$search = new Builder(false);
+```
+All right, Happy hacking~  
