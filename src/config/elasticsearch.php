@@ -19,8 +19,8 @@ return [
         // 索引初始配置
         'settings'   => [
             // 分片与副本
-            'number_of_shards'   => 1,
-            'number_of_replicas' => 0,
+            'number_of_shards'   => 3,
+            'number_of_replicas' => 1,
 
             'analysis' => [
                 'analyzer'    => [
@@ -40,19 +40,6 @@ return [
                         'tokenizer'   => 'whitespace',
                         'filter'      => ['local_synonym'],
                         'char_filter' => ['special_char_convert']
-                    ],
-                    // 简繁转换分析器
-                    'tsconvert_analyzer' => [
-                        'tokenizer'   => 'tsconvert',
-                        'char_filter' => ['special_char_convert']
-                    ],
-                ],
-                'tokenizer' => [
-                    'tsconvert' => [
-                        'type'         => 'stconvert',
-                        'delimiter'    => ',',
-                        'keep_both'    => true,
-                        'convert_type' => 't2s'
                     ]
                 ],
                 'filter'      => [
@@ -73,13 +60,6 @@ return [
                     ]
                 ],
                 'char_filter' => [
-                    // 繁简过滤
-                    'tsconvert' => [
-                        'type'         => 'stconvert',
-                        'delimiter'    => ',',
-                        'keep_both'    => true,
-                        'convert_type' => 't2s'
-                    ],
                     // 特殊字符过滤
                     'special_char_convert' => [
                         'type'          => 'mapping',
@@ -149,7 +129,7 @@ return [
                                         'type'            => 'string',
                                         'boost'           => 1,
                                         'term_vector'     => 'with_positions_offsets',
-                                        'analyzer'        => 'tsconvert_analyzer'
+                                        'analyzer'        => 'tsconvert_keep_both'
                                     ],
                                     'ext'          => [
                                         'type'        => 'string',
