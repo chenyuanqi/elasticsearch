@@ -263,17 +263,6 @@ class Query
      */
     public function createMapping()
     {
-        $client   = $this->getClient();
-        $settings = array_get($this->config, $this->index.'.settings', []);
-        $mapping  = array_get($this->config, $this->index.'.indices.'.$this->type.'.mappings', []);
-
-        dd($client->indices()->create([
-            'index' => $this->index,
-            'body'  => [
-                'settings' => $settings,
-                'mappings' => $mapping
-            ]
-        ]));
         try {
             $client   = $this->getClient();
             $settings = array_get($this->config, $this->index.'.settings', []);
