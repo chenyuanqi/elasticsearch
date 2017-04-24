@@ -1,12 +1,68 @@
 <?php
 
-declare(strict_types=1);
+use PHPUnit\Framework\TestCase;
+use chenyuanqi\elasticsearch\Builder;
 
-
-final class TestConfig extends TestCase
+final class ConfigTest extends TestCase
 {
-    public function testTraditionalToSimpleConvert()
+    /**
+     * 索引实例
+     *
+     * @var
+     */
+    protected $index;
+
+    /**
+     * 准备测试
+     */
+    public function setUp()
     {
+        $this->index = new Builder(false);
+    }
+
+    /**
+     * 测试建立映射
+     */
+    public function testCreateMapping()
+    {
+        $result = $this->index->createMapping();
+        self::assertTrue($result['acknowledged']);
+    }
+
+    /**
+     * 测试清空索引
+     */
+    public function testClearIndex()
+    {
+        $result = $this->index->truncate();
+        self::assertTrue($result['acknowledged']);
+    }
+
+    /**
+     * 测试获取分片数量
+     */
+    public function testGetShardsNumber()
+    {
+        $shardsNumber = 3;
+        self::assertEquals($shardsNumber, $this->index->getShardsNumber());
+    }
+
+    /**
+     * 测试获取批量处理限制
+     */
+    public function testGetLimitByConfig()
+    {
+        $limit = 10000;
+        self::assertEquals($limit, $this->index->getLimitByConfig());
+    }
+
+    /**
+     * 测试获取模型对象
+     */
+    public function testGetModel()
+    {
+        $modelName = '\App\Model\Default';
+        self::assertInstanceOf($modelName, $this->index->getModel());
     }
 
 }

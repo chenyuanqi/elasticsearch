@@ -1,10 +1,22 @@
 <?php
 
-declare(strict_types=1);
+use PHPUnit\Framework\TestCase;
+use chenyuanqi\elasticsearch\Builder;
 
-final class TestQuery extends TestCase
+final class QueryTest extends TestCase
 {
-    public function testCreateMapping()
+    /**
+     * 索引实例
+     *
+     * @var
+     */
+    protected $index;
+
+    /**
+     * 准备测试
+     */
+    public function setUp()
     {
+        $this->index = new Builder(false);
     }
 }
