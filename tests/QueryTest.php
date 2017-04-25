@@ -38,6 +38,7 @@ final class QueryTest extends TestCase
         ];
 
         $result = $this->index->insert($data, $id);
+        self::assertTrue($result['created']);
         self::assertEquals(0, $result['_shards']['failed']);
     }
 
