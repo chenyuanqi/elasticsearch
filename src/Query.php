@@ -351,7 +351,7 @@ class Query
             ];
             $id && $params['id'] = $id;
 
-            return $client->create($params);
+            return $client->index($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
             exit();
@@ -412,7 +412,6 @@ class Query
             return $client->updateByQuery([
                 'index'     => $this->index,
                 'type'      => $this->type,
-                'conflicts' => 'proceed',
                 'body'      => [
                     'query'  => $this->where['query'],
                     'script' => [
@@ -451,7 +450,6 @@ class Query
                 'index'     => $this->index,
                 'type'      => $this->type,
                 'id'        => $id,
-                'conflicts' => 'proceed',
                 'body'      => [
                     'script' => [
                         'inline' => $inline,
