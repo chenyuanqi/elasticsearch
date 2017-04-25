@@ -67,7 +67,7 @@ final class ConfigTest extends TestCase
     /**
      * 测试获取模型对象
      *
-     * @group config-normal
+     * @group config-special
      */
     public function testGetModel()
     {

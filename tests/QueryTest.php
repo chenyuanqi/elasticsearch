@@ -30,7 +30,7 @@ final class QueryTest extends TestCase
      * @dataProvider additionProvider
      * @group        query-crud
      */
-    public function testInsert($id, $title, $content)
+    public function testInsertData($id, $title, $content)
     {
         $data = [
             'title'   => $title,
