@@ -22,6 +22,8 @@ final class ConfigTest extends TestCase
 
     /**
      * 测试建立映射
+     *
+     * @group config-normal
      */
     public function testCreateMapping()
     {
@@ -30,7 +32,9 @@ final class ConfigTest extends TestCase
     }
 
     /**
-     * 测试清空索引
+     * 测试清空索引 [单独执行测试]
+     *
+     * @group config-special
      */
     public function testClearIndex()
     {
@@ -40,6 +44,8 @@ final class ConfigTest extends TestCase
 
     /**
      * 测试获取分片数量
+     *
+     * @group config-normal
      */
     public function testGetShardsNumber()
     {
@@ -49,6 +55,8 @@ final class ConfigTest extends TestCase
 
     /**
      * 测试获取批量处理限制
+     *
+     * @group config-normal
      */
     public function testGetLimitByConfig()
     {
@@ -58,6 +66,8 @@ final class ConfigTest extends TestCase
 
     /**
      * 测试获取模型对象
+     *
+     * @group config-normal
      */
     public function testGetModel()
     {
