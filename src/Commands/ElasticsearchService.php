@@ -146,7 +146,8 @@ class ElasticsearchService extends Command
         $model = $index->getModel();
         $limit = $index->getLimitByConfig();
 
-        $model->where('status', 'show')->chunk($limit, function ($datas) use ($index){
+        // 条件过滤：$model->where('status', 'show')
+        $model->chunk($limit, function ($datas) use ($index){
             $params = collect($datas)->map(function ($data) use ($index){
                 $item        = $data->toArray();
                 $item['_id'] = sprintf('%s', $data->id);
