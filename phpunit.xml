@@ -10,16 +10,20 @@
          timeoutForMediumTests="10"
          timeoutForLargeTests="60"
          processIsolation="false"
+         stopOnError="false"
          stopOnFailure="false"
+         stopOnIncomplete="false"
+         stopOnSkipped="false"
+         stopOnRisky="false"
          syntaxCheck="false">
     <testsuites>
         <testsuite name="Package Test Suite">
-            <directory phpVersion="5.5.0" phpVersionOperator=">=">./tests/</directory>
+            <directory phpVersion="5.5.0" phpVersionOperator=">=">tests/</directory>
         </testsuite>
     </testsuites>
     <filter>
         <whitelist>
-            <directory suffix=".php">./src/</directory>
+            <directory suffix=".php">src/</directory>
         </whitelist>
     </filter>
     <groups>
@@ -32,13 +36,13 @@
         </exclude>
     </groups>
     <logging>
-        <log type="coverage-html" target="./logs/report" lowUpperBound="35" highLowerBound="70"/>
-        <log type="coverage-clover" target="./logs/coverage.xml"/>
-        <log type="coverage-php" target="./logs/coverage.serialized"/>
+        <log type="coverage-html" target="logs/report" lowUpperBound="35" highLowerBound="70"/>
+        <log type="coverage-clover" target="logs/coverage.xml"/>
+        <log type="coverage-php" target="logs/coverage.serialized"/>
         <log type="coverage-text" target="php://stdout" showUncoveredFiles="false"/>
-        <log type="json" target="./logs/logfile.json"/>
-        <log type="tap" target="./logs/logfile.tap"/>
-        <log type="junit" target="./logs/logfile.xml" logIncompleteSkipped="false"/>
+        <log type="json" target="logs/logfile.json"/>
+        <log type="tap" target="logs/logfile.tap"/>
+        <log type="junit" target="logs/logfile.xml" logIncompleteSkipped="false"/>
     </logging>
     <php>
         <env name="TEST_TARGET" value="chenyuanqi/elasticsearch"/>
