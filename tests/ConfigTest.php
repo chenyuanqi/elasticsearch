@@ -23,7 +23,7 @@ final class ConfigTest extends TestCase
     /**
      * 测试建立映射
      *
-     * @group config-normal
+     * @group config-special
      */
     public function testCreateMapping()
     {
