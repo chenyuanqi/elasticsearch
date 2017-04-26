@@ -99,6 +99,28 @@ final class QueryTest extends TestCase
     }
 
     /**
+     * 测试多重检索数据
+     *
+     * @group query-search
+     */
+    public function testMergeGet()
+    {
+        $data   = [
+            ['index' => 'default', 'type' => 'default', 'id' => ['1', '2']],
+            ['index' => '.kibana', 'type' => 'config',  'id' => '4.5.1'],
+            [
+                'index' => 'laravel-error-2017-04-25',
+                'type'  => 'laravel-error-2017-04-25',
+                'id'    => 'AVui3C5Dp6HZ_LBoZqoX',
+            ],
+        ];
+        $result = $this->index->mget($data);
+        self::assertTrue($result['docs'][0]['found']);
+        self::assertTrue($result['docs'][1]['found']);
+        self::assertTrue($result['docs'][2]['found']);
+    }
+
+    /**
      * _source 数据提供器
      *
      * @return array
@@ -129,4 +151,5 @@ final class QueryTest extends TestCase
             'Five'  => ['5'],
         ];
     }
+
 }

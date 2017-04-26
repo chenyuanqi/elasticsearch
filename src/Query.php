@@ -970,6 +970,36 @@ class Query
     }
 
     /**
+     * 检索多个文档
+     *
+     * @param  array $data
+     *
+     * @return mixed
+     */
+    public function mget($data = [])
+    {
+        try {
+            $params['body']['docs'] = collect($data)->map(function ($item){
+                    $needle =  [
+                        '_index' => $item['index'],
+                        '_id'    => $item['id'],
+                    ];
+                    $item['type'] && $needle['_type'] = $item['type'];
+                    return $needle;
+                })
+                ->toArray();
+
+            return $this->getClient()->mget($params);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        } catch (\Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        }
+    }
+
+    /**
      * 包含 ID 查询
      *
      * @param  array $ids

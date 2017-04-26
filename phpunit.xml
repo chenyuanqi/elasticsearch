@@ -30,6 +30,7 @@
         <include>
             <group>config-normal</group>
             <group>query-crud</group>
+            <group>query-search</group>
         </include>
         <exclude>
             <group>config-special</group>
