@@ -980,14 +980,23 @@ class Query
     {
         try {
             $params['body']['docs'] = collect($data)->map(function ($item){
-                    $needle =  [
+                    $needle = [
                         '_index' => $item['index'],
                         '_id'    => $item['id'],
                     ];
+                    // 类型
                     $item['type'] && $needle['_type'] = $item['type'];
+                    // 字段过滤
+                    if (isset($item['include']) && isset($item['exclude'])) {
+                        $needle['_source'] = [
+                            'include' => $item['include'],
+                            'exclude' => $item['exclude'],
+                        ];
+                    } elseif (isset($item['include']) && empty($item['exclude'])) {
+                        $needle['_source'] = $item['include'];
+                    }
                     return $needle;
-                })
-                ->toArray();
+                })->toArray();
 
             return $this->getClient()->mget($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
