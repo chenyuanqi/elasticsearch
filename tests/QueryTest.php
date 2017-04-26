@@ -13,7 +13,7 @@ final class QueryTest extends TestCase
     protected $index;
 
     /**
-     * 准备测试
+     * 准备基境
      */
     public function setUp()
     {
@@ -99,28 +99,6 @@ final class QueryTest extends TestCase
     }
 
     /**
-     * 测试多重检索数据
-     *
-     * @group query-search
-     */
-    public function testMergeGet()
-    {
-        $data   = [
-            ['index' => 'default', 'type' => 'default', 'id' => ['1', '2']],
-            ['index' => '.kibana', 'type' => 'config',  'id' => '4.5.1'],
-            [
-                'index' => 'laravel-error-2017-04-25',
-                'type'  => 'laravel-error-2017-04-25',
-                'id'    => 'AVui3C5Dp6HZ_LBoZqoX',
-            ],
-        ];
-        $result = $this->index->mget($data);
-        self::assertTrue($result['docs'][0]['found']);
-        self::assertTrue($result['docs'][1]['found']);
-        self::assertTrue($result['docs'][2]['found']);
-    }
-
-    /**
      * _source 数据提供器
      *
      * @return array
@@ -150,6 +128,108 @@ final class QueryTest extends TestCase
             'Four'  => ['4'],
             'Five'  => ['5'],
         ];
+    }
+
+    /**
+     * 测试根据 ID 查找数据
+     *
+     * @param string $id
+     *
+     * @dataProvider additionIdProvider
+     * @group        query-search
+     */
+    public function testFindById($id)
+    {
+        $result = $this->index->find($id);
+        self::assertTrue($result['found']);
+    }
+
+    /**
+     * 测试多重检索数据
+     *
+     * @group query-search
+     */
+    public function testMergeGet()
+    {
+        $data   = [
+            ['index' => 'default', 'type' => 'default', 'id' => ['1', '2'], 'include' => 'title'],
+            ['index' => '.kibana', 'type' => 'config',  'id' => '4.5.1', 'include' => ['title'], 'exclude' => ['fields']],
+            [
+                'index' => 'laravel-error-2017-04-25',
+                'type'  => 'laravel-error-2017-04-25',
+                'id'    => 'AVui3C5Dp6HZ_LBoZqoX',
+            ],
+        ];
+        $result = $this->index->mget($data);
+        self::assertTrue($result['docs'][0]['found']);
+        self::assertTrue($result['docs'][1]['found']);
+        self::assertTrue($result['docs'][2]['found']);
+    }
+
+    /**
+     * 测试批量增删改
+     *
+     * @group query-crud
+     */
+    public function testBulk()
+    {
+        $params = [
+            [
+                'index',
+                '_id'     => 1,
+                'title'   => 'viki',
+                'content' => 'test11111',
+            ],
+            [
+                'update',
+                '_id'   => 1,
+                'title' => 'vikey',
+            ],
+            [
+                'delete',
+                '_id' => 2,
+            ],
+        ];
+        $result = $this->index->bulk($params);
+        self::assertFalse($result['errors']);
+    }
+
+    /**
+     * 测试根据 ids 检索数据
+     *
+     * @group query-search
+     */
+    public function testIds()
+    {
+        $ids    = [1, 2, 3];
+        $result = $this->index->index('default')
+                              ->type('default')
+                              ->ids($ids)
+                              ->search();
+        self::assertEquals(3, $result['total']);
+    }
+
+    /**
+     * 测试 queryString 查询
+     *
+     * @group query-search
+     */
+    public function testQueryString()
+    {
+        $query  = 'title:"航空"';
+        $result = $this->index->index('default')
+                              ->type('default')
+                              ->queryString($query)
+                              ->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 拆除基境
+     */
+    public function tearDown()
+    {
+        $this->index = null;
     }
 
 }
