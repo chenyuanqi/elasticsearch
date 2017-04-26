@@ -144,7 +144,7 @@ $data = [
     ],
     [
         'create',
-        '_id'  => 2
+        '_id'  => 2,
         'name' => 'lucy',
         'age'  => 15
     ],
