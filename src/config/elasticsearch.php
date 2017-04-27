@@ -9,6 +9,29 @@ return [
     // 默认类型 (相当于数据表的名称)
     'default_type'  => 'default',
 
+    // 模板配置
+    'default_template' => [
+        'order'    => 1,
+        'template' => 'cool*',
+        'settings' => [
+            'number_of_shards'   => 1,
+            'number_of_replicas' => 0,
+        ],
+        'mappings'  => [
+            'type_name' => [
+                '_all'       => [
+                    'enabled' => false,
+                ],
+                'properties' => [
+                    '@timestamp' => [
+                        'type'   => 'date',
+                        'format' => 'dd/MMM/YYYY:HH:mm:ss Z',
+                    ],
+                ],
+            ],
+        ],
+    ],
+
     // 索引配置, 索引名称 default
     'default'       => [
         // 链接配置 (可配多个)
@@ -94,6 +117,7 @@ return [
                     'default' => [
                         // match _all 匹配解析器
                         '_all'       => [
+                            'enabled'  => true,
                             'analyzer' => 'ik_smart'
                         ],
                         'properties' => [
