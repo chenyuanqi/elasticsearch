@@ -257,6 +257,58 @@ class Query
     }
 
     /**
+     * 创建模板 [更新]
+     *
+     * @param  string $templateName
+     *
+     * @return mixed
+     */
+    public function createTemplate($templateName)
+    {
+        $client           = $this->getClient();
+        $templateSettings = array_get($this->config, $templateName, []);
+        if (empty($templateSettings)) {
+            echo "The template configure is not exist! \n";
+            exit();
+        }
+
+        try {
+            return $client->indices()->putTemplate([
+                'name' => $templateName,
+                'body' => $templateSettings,
+            ]);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            echo $e->getCode().': '.$e->getMessage()."\n";
+            exit();
+        } catch (\Exception $e) {
+            echo $e->getCode().': '.$e->getMessage()."\n";
+            exit();
+        }
+    }
+
+    /**
+     * 删除模板
+     *
+     * @param  string $templateName
+     *
+     * @return mixed
+     */
+    public function deleteTemplate($templateName)
+    {
+        try {
+            return $this->getClient()->indices()->deleteTemplate([
+                            'name' => $templateName,
+                        ]);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            echo $e->getCode().': '.$e->getMessage()."\n";
+            exit();
+        } catch (\Exception $e) {
+            echo $e->getCode().': '.$e->getMessage()."\n";
+            exit();
+        }
+    }
+
+    /**
      * 创建映射 (包含 index 配置)
      *
      * @return array

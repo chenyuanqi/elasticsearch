@@ -21,6 +21,30 @@ final class ConfigTest extends TestCase
     }
 
     /**
+     * 测试建立模板
+     *
+     * @group config-normal
+     */
+    public function testCreateTemplate()
+    {
+        $templateName = 'default_template';
+        $result       = $this->index->createTemplate($templateName);
+        self::assertTrue($result['acknowledged']);
+    }
+
+    /**
+     * 测试删除模板
+     *
+     * @group config-normal
+     */
+    public function testDeleteTemplate()
+    {
+        $templateName = 'default_template';
+        $result       = $this->index->deleteTemplate($templateName);
+        self::assertTrue($result['acknowledged']);
+    }
+
+    /**
      * 测试建立映射
      *
      * @group config-special
