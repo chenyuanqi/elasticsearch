@@ -115,6 +115,7 @@ class ElasticsearchService extends Command
         $this->info('新建索引及映射开始');
         $index = (new Builder)->index($this->name)->type($this->type);
         $index->createMapping();
+        $index->createAlias();
         $this->info('新建索引及映射结束');
     }
 
