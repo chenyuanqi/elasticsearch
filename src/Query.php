@@ -578,6 +578,7 @@ class Query
         }
 
         try {
+            $query  = $this->where['query'];
             $client = $this->getClient();
             $params = $this->filterFields($body);
             $inline = collect($params)->map(function($item, $key) {
@@ -585,15 +586,16 @@ class Query
             })->implode(';');
 
             return $client->updateByQuery([
-                'index'     => $this->alias ?: $this->index,
-                'type'      => $this->type,
-                'body'      => [
-                    'query'  => $this->where['query'],
-                    'script' => [
+                'index' => $this->alias ?: $this->index,
+                'type'  => $this->type,
+                'body'  => [
+                    'conflicts' => 'proceed',
+                    'query'     => $query,
+                    'script'    => [
                         'inline' => $inline,
-                        'params' => $params
-                    ]
-                ]
+                        'params' => $params,
+                    ],
+                ],
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
@@ -622,18 +624,19 @@ class Query
             })->implode(';');
 
             return $client->update([
-                'index'     => $this->alias ?: $this->index,
-                'type'      => $this->type,
-                'id'        => $id,
-                'body'      => [
-                    'script' => [
+                'index' => $this->alias ?: $this->index,
+                'type'  => $this->type,
+                'id'    => $id,
+                'body'  => [
+                    'conflicts' => 'proceed',
+                    'script'    => [
                         'inline' => $inline,
-                        'params' => $params
+                        'params' => $params,
                     ],
-                    'upsert' => [
-                        'id' => $id
-                    ]
-                ]
+                    'upsert'    => [
+                        'id' => $id,
+                    ],
+                ],
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
@@ -659,20 +662,23 @@ class Query
         }
 
         try {
-            return $this->getClient()->updateByQuery([
-                'index'     => $this->alias ?: $this->index,
-                'type'      => $this->type,
-                'conflicts' => 'proceed',
-                'body'      => [
-                    'query'  => $this->where['query'],
-                    'script' => [
-                        'inline' => "ctx._source.{$field} += count",
-                        'params' => [
-                            'count' => $value
-                        ]
-                    ]
-                ]
-            ]);
+            $query = $this->where['query'];
+
+            return $this->getClient()
+                        ->updateByQuery([
+                            'index' => $this->alias ?: $this->index,
+                            'type'  => $this->type,
+                            'body'  => [
+                                'conflicts' => 'proceed',
+                                'query'     => $query,
+                                'script'    => [
+                                    'inline' => "ctx._source.{$field} += count",
+                                    'params' => [
+                                        'count' => $value,
+                                    ],
+                                ],
+                            ],
+                        ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
             exit();
@@ -697,20 +703,23 @@ class Query
         }
 
         try {
-            return $this->getClient()->updateByQuery([
-                'index'     => $this->alias ?: $this->index,
-                'type'      => $this->type,
-                'conflicts' => 'proceed',
-                'body'      => [
-                    'query'  => $this->where['query'],
-                    'script' => [
-                        'inline' => "ctx._source.{$field} -= count",
-                        'params' => [
-                            'count' => $value
-                        ]
-                    ]
-                ]
-            ]);
+            $query = $this->where['query'];
+
+            return $this->getClient()
+                        ->updateByQuery([
+                            'index' => $this->alias ?: $this->index,
+                            'type'  => $this->type,
+                            'body'  => [
+                                'conflicts' => 'proceed',
+                                'query'     => $query,
+                                'script'    => [
+                                    'inline' => "ctx._source.{$field} -= count",
+                                    'params' => [
+                                        'count' => $value,
+                                    ],
+                                ],
+                            ],
+                        ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
             exit();
@@ -756,10 +765,11 @@ class Query
         }
 
         try {
+            $body = $this->where;
             return $this->getClient()->deleteByQuery([
                 'index' => $this->alias ?: $this->index,
                 'type'  => $this->type,
-                'body'  => $this->where
+                'body'  => $body
             ]);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
@@ -880,10 +890,12 @@ class Query
      */
     public function search($paging = false)
     {
+        $body   = $this->where;
+        $client = $this->getClient();
         $params = [
             'index' => $this->alias ?: $this->index,
             'type'  => $this->type,
-            'body'  => $this->where
+            'body'  => $body
         ];
         // 是否指定字段
         if($this->columns) {
@@ -906,14 +918,18 @@ class Query
         if($this->order) {
             $params['body']['sort'] = $this->order;
         }
-        $this->output = $this->getClient()->search($params);
+        $this->output = $client->search($params);
         // 如果是滚屏或扫描，结果需再次查询
+        /*
         if(isset($this->output['_scroll_id'])) {
             $this->searchByScrollId($this->output['_scroll_id']);
         }
+        */
 
         // 聚合查询结果特殊处理
         if($this->aggregations) {
+            // 重置 aggregations
+            $this->aggregations = [];
             return $this->output['aggregations']['total']['value'];
         }
 
@@ -1538,7 +1554,7 @@ class Query
      */
     public function scroll($size = 1000, $expire = '30s', $type = '')
     {
-        $this->scroll_size   = $size / $this->getShardsNumber();
+        $this->scroll_size   = (int)($size / $this->getShardsNumber());
         $this->scroll_expire = $expire;
         $this->scroll_type   = $type;
 
@@ -1597,6 +1613,8 @@ class Query
         // 总记录数
         $result['total'] = $this->output['hits']['total'];
         isset($this->output['_scroll_id']) && $result['_scroll_id'] = $this->output['_scroll_id'];
+        // 重置 aggregations
+        $this->aggregations = [];
 
         return $result;
     }
