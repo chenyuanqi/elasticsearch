@@ -28,10 +28,11 @@ final class QueryTest extends TestCase
      * @param string $content
      *
      * @dataProvider additionProvider
-     * @group        query-crud
+     * @group        query-create
      */
     public function testInsertData($id, $title, $content)
     {
+        echo __METHOD__."\n";
         $data = [
             'title'   => $title,
             'content' => $content
@@ -50,10 +51,11 @@ final class QueryTest extends TestCase
      * @param string $content
      *
      * @dataProvider additionProvider
-     * @group        query-crud
+     * @group        query-update
      */
     public function testUpdateById($id, $title, $content)
     {
+        echo __METHOD__."\n";
         $data = [
             'title'   => $title,
             'content' => $content
@@ -71,30 +73,17 @@ final class QueryTest extends TestCase
      * @param string $content
      *
      * @dataProvider additionProvider
-     * @group        query-crud
+     * @group        query-update
      */
     public function testInsertOrUpdate($id, $title, $content)
     {
+        echo __METHOD__."\n";
         $data = [
             'title'   => $title,
             'content' => $content
         ];
 
         $result = $this->index->insertOrUpdate($data, $id);
-        self::assertEquals(0, $result['_shards']['failed']);
-    }
-
-    /**
-     * 测试根据 ID 删除数据
-     *
-     * @param string $id
-     *
-     * @dataProvider additionIdProvider
-     * @group        query-crud
-     */
-    public function testDeleteById($id)
-    {
-        $result = $this->index->deleteById($id);
         self::assertEquals(0, $result['_shards']['failed']);
     }
 
@@ -140,6 +129,7 @@ final class QueryTest extends TestCase
      */
     public function testFindById($id)
     {
+        echo __METHOD__."\n";
         $result = $this->index->find($id);
         self::assertTrue($result['found']);
     }
@@ -151,8 +141,9 @@ final class QueryTest extends TestCase
      */
     public function testMergeGet()
     {
+        echo __METHOD__."\n";
         $data   = [
-            ['index' => 'default', 'type' => 'default', 'id' => ['1', '2'], 'include' => 'title'],
+            ['index' => 'default_migrate', 'type' => 'default', 'id' => ['1', '2'], 'include' => 'title'],
             ['index' => '.kibana', 'type' => 'config',  'id' => '4.5.1', 'include' => ['title'], 'exclude' => ['fields']],
             [
                 'index' => 'laravel-error-2017-04-25',
@@ -160,6 +151,7 @@ final class QueryTest extends TestCase
                 'id'    => 'AVui3C5Dp6HZ_LBoZqoX',
             ],
         ];
+
         $result = $this->index->mget($data);
         self::assertTrue($result['docs'][0]['found']);
         self::assertTrue($result['docs'][1]['found']);
@@ -173,6 +165,7 @@ final class QueryTest extends TestCase
      */
     public function testBulk()
     {
+        echo __METHOD__."\n";
         $params = [
             [
                 'index',
@@ -189,6 +182,12 @@ final class QueryTest extends TestCase
                 'delete',
                 '_id' => 2,
             ],
+            [
+                'index',
+                '_id'     => 2,
+                'title'   => 'append',
+                'content' => 'append will be expected!',
+            ],
         ];
         $result = $this->index->bulk($params);
         self::assertFalse($result['errors']);
@@ -201,6 +200,7 @@ final class QueryTest extends TestCase
      */
     public function testIds()
     {
+        echo __METHOD__."\n";
         $ids    = [1, 2, 3];
         $result = $this->index->index('default')
                               ->type('default')
@@ -216,12 +216,28 @@ final class QueryTest extends TestCase
      */
     public function testQueryString()
     {
+        echo __METHOD__."\n";
         $query  = 'title:"航空"';
         $result = $this->index->index('default')
                               ->type('default')
                               ->queryString($query)
                               ->search();
         self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试根据 ID 删除数据
+     *
+     * @param string $id
+     *
+     * @dataProvider additionIdProvider
+     * @group        query-delete
+     */
+    public function testDeleteById($id)
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->deleteById($id);
+        self::assertEquals(0, $result['_shards']['failed']);
     }
 
     /**
