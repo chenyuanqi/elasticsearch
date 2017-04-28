@@ -24,6 +24,13 @@
     <filter>
         <whitelist>
             <directory suffix=".php">src/</directory>
+            <exclude>
+                <directory suffix=".php">src/Commands</directory>
+                <directory suffix=".php">src/config</directory>
+                <file>src/Analyze.php</file>
+                <file>src/SearchFacade.php</file>
+                <file>src/SearchServiceProvider.php</file>
+            </exclude>
         </whitelist>
     </filter>
     <groups>
@@ -38,6 +45,7 @@
         </include>
         <exclude>
             <group>config-special</group>
+            <group>query-special</group>
         </exclude>
     </groups>
     <logging>
