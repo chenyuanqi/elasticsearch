@@ -1,6 +1,6 @@
 # chenyuanqi/elasticsearch not only for laravel5
 This package depends on "elasticsearch/elasticsearch" and it provides a unified API across a variety of different full text search services.  
-> Notice: just test for elasticsearch 2.3.3  
+> Notice: Test for elasticsearch 2.3.3, even than 5.0; whatever, some function cannot take effect by the low one.  
 
 The following dependencies are needed for the listed search drivers:
 ```json
