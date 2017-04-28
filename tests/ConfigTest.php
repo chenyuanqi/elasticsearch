@@ -101,7 +101,7 @@ final class ConfigTest extends TestCase
     /**
      * 测试迁移数据
      *
-     *
+     * @depends testIsAlias
      * @group   config-normal
      */
     public function testMigrateIndex()
