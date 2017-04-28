@@ -29,8 +29,12 @@
     <groups>
         <include>
             <group>config-normal</group>
-            <group>query-crud</group>
+            <group>query-create</group>
+            <group>query-update</group>
             <group>query-search</group>
+            <group>query-crud</group>
+            <group>query-delete</group>
+            <!--<group>config-special</group>-->
         </include>
         <exclude>
             <group>config-special</group>
