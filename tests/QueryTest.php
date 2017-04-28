@@ -26,16 +26,18 @@ final class QueryTest extends TestCase
      * @param string $id
      * @param string $title
      * @param string $content
+     * @param int    $score
      *
      * @dataProvider additionProvider
      * @group        query-create
      */
-    public function testInsertData($id, $title, $content)
+    public function testInsertData($id, $title, $content, $score)
     {
         echo __METHOD__."\n";
         $data = [
             'title'   => $title,
-            'content' => $content
+            'content' => $content,
+            'score'   => $score
         ];
 
         $result = $this->index->insert($data, $id);
@@ -49,16 +51,18 @@ final class QueryTest extends TestCase
      * @param string $id
      * @param string $title
      * @param string $content
+     * @param int    $score
      *
      * @dataProvider additionProvider
      * @group        query-update
      */
-    public function testUpdateById($id, $title, $content)
+    public function testUpdateById($id, $title, $content, $score)
     {
         echo __METHOD__."\n";
         $data = [
             'title'   => $title,
-            'content' => $content
+            'content' => $content,
+            'score'   => $score
         ];
 
         $result = $this->index->updateById($data, $id);
@@ -71,20 +75,61 @@ final class QueryTest extends TestCase
      * @param string $id
      * @param string $title
      * @param string $content
+     * @param int    $score
      *
      * @dataProvider additionProvider
      * @group        query-update
      */
-    public function testInsertOrUpdate($id, $title, $content)
+    public function testInsertOrUpdate($id, $title, $content, $score)
     {
         echo __METHOD__."\n";
         $data = [
             'title'   => $title,
-            'content' => $content
+            'content' => $content,
+            'score'   => $score
         ];
 
         $result = $this->index->insertOrUpdate($data, $id);
         self::assertEquals(0, $result['_shards']['failed']);
+    }
+
+    /**
+     * 测试根据条件更新
+     *
+     * @group query-update
+     */
+    public function testUpdateByConditions()
+    {
+        echo __METHOD__."\n";
+        $query  = 'title:"國際航空電視臺5"';
+        $result = $this->index->queryString($query)->update(['content' => 'test update by conditions', 'score' => 1]);
+        self::assertEmpty($result['failures']);
+    }
+
+    /**
+     * 测试自增
+     *
+     * @group query-update
+     */
+    public function testIncrease()
+    {
+        echo __METHOD__."\n";
+        $query  = 'title:"國際航空電視臺5"';
+        $result = $this->index->queryString($query)->increase('score', 2);
+        self::assertEmpty($result['failures']);
+    }
+
+    /**
+     * 测试自减
+     *
+     * @group query-update
+     */
+    public function testDecrease()
+    {
+        echo __METHOD__."\n";
+        $query  = 'title:"國際航空電視臺5"';
+        $result = $this->index->queryString($query)->decrease('score');
+        self::assertEmpty($result['failures']);
     }
 
     /**
@@ -95,11 +140,11 @@ final class QueryTest extends TestCase
     public function additionProvider()
     {
         return [
-            'One'   => ['1', '國際航空電視臺1', 'content1'.str_random(6)],
-            'Two'   => ['2', '國際航空電視臺2', 'content2'.str_random(6)],
-            'Three' => ['3', '國際航空電視臺3', 'content3'.str_random(6)],
-            'Four'  => ['4', '國際航空電視臺4', 'content4'.str_random(6)],
-            'Five'  => ['5', '國際航空電視臺5', 'content5'],
+            'One'   => ['1', '國際航空電視臺1', 'content1'.str_random(6), random_int(1, 10)],
+            'Two'   => ['2', '國際航空電視臺2', 'content2'.str_random(6), random_int(1, 10)],
+            'Three' => ['3', '國際航空電視臺3', 'content3'.str_random(6), random_int(1, 10)],
+            'Four'  => ['4', '國際航空電視臺4', 'content4'.str_random(6), random_int(1, 10)],
+            'Five'  => ['5', '國際航空電視臺5', 'content5', random_int(1, 10)],
         ];
     }
 
@@ -117,6 +162,50 @@ final class QueryTest extends TestCase
             'Four'  => ['4'],
             'Five'  => ['5'],
         ];
+    }
+
+    /**
+     * 测试查询最小值
+     *
+     * @group query-search
+     */
+    public function testMinScore()
+    {
+        $result = $this->index->min('score');
+        self::assertGreaterThan(0, $result);
+    }
+
+    /**
+     * 测试查询最大值
+     *
+     * @group query-search
+     */
+    public function testMaxScore()
+    {
+        $result = $this->index->max('score');
+        self::assertGreaterThan(0, $result);
+    }
+
+    /**
+     * 测试查询字段总和
+     *
+     * @group query-search
+     */
+    public function testSumScore()
+    {
+        $result = $this->index->sum('score');
+        self::assertGreaterThan(0, $result);
+    }
+
+    /**
+     * 测试查询字段平均值
+     *
+     * @group query-search
+     */
+    public function testAvgScore()
+    {
+        $result = $this->index->avg('score');
+        self::assertGreaterThan(0, $result);
     }
 
     /**
@@ -169,13 +258,14 @@ final class QueryTest extends TestCase
         $params = [
             [
                 'index',
-                '_id'     => 1,
+                '_id'     => 6,
                 'title'   => 'viki',
                 'content' => 'test11111',
+                'score'   => 9
             ],
             [
                 'update',
-                '_id'   => 1,
+                '_id'   => 6,
                 'title' => 'vikey',
             ],
             [
@@ -187,6 +277,7 @@ final class QueryTest extends TestCase
                 '_id'     => 2,
                 'title'   => 'append',
                 'content' => 'append will be expected!',
+                'score'   => 1
             ],
         ];
         $result = $this->index->bulk($params);
@@ -210,6 +301,69 @@ final class QueryTest extends TestCase
     }
 
     /**
+     * 测试滚屏搜索
+     *
+     * @group query-search
+     */
+    public function testScroll()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->scroll(60)->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试滚屏ID搜索
+     *
+     * @group query-special
+     */
+    public function testScrollById()
+    {
+        echo __METHOD__."\n";
+        $searchResult = $this->index->scroll(60)->search();
+        $result = $this->index->searchByScrollId($searchResult['_scroll_id']);
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试获取搜索结果第一条数据
+     *
+     * @group query-search
+     */
+    public function testGetFirstData()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->first();
+        self::assertNotEmpty($result['_id']);
+    }
+
+    /**
+     * 测试获取搜索结果总数量
+     *
+     * @group query-search
+     */
+    public function testGetTotalNumber()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->count();
+        self::assertGreaterThan(0, $result);
+    }
+
+    /**
+     * 测试搜索显示字段
+     *
+     * @group query-search
+     */
+    public function testSelectFields()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->pluck('title', 'score')->first();
+        self::assertNotEmpty($result['title']);
+        self::assertNotEmpty($result['score']);
+        self::assertFalse(isset($result['content']));
+    }
+
+    /**
      * 测试 queryString 查询
      *
      * @group query-search
@@ -226,6 +380,30 @@ final class QueryTest extends TestCase
     }
 
     /**
+     * 测试匹配查询
+     *
+     * @group query-search
+     */
+    public function testMatchQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->match('title', '航空', 'match')->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试 term 搜索
+     *
+     * @group query-search
+     */
+    public function testTermQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->term('title', 'vikey')->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
      * 测试根据 ID 删除数据
      *
      * @param string $id
@@ -237,6 +415,18 @@ final class QueryTest extends TestCase
     {
         echo __METHOD__."\n";
         $result = $this->index->deleteById($id);
+        self::assertEquals(0, $result['_shards']['failed']);
+    }
+
+    /**
+     * 测试根据条件删除数据
+     *
+     * @group query-special
+     */
+    public function testDeleteByConditions()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->term('title', 'vikey')->delete();
         self::assertEquals(0, $result['_shards']['failed']);
     }
 
