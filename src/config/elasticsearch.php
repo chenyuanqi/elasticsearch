@@ -111,7 +111,8 @@ return [
                 // 索引字段
                 'fields'   => [
                     'title',
-                    'content'
+                    'content',
+                    'score'
                 ],
 
                 // 映射配置
@@ -270,7 +271,8 @@ return [
                 // 索引字段
                 'fields'   => [
                     'title',
-                    'content'
+                    'content',
+                    'score'
                 ],
 
                 // 映射配置
