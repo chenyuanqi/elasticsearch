@@ -42,6 +42,13 @@ class Query
     protected $type;
 
     /**
+     * 索引别名
+     *
+     * @var
+     */
+    protected $alias;
+
+    /**
      * 查询条件
      *
      * @var array
@@ -177,6 +184,8 @@ class Query
                 exit();
             }
 
+            // 别名
+            $this->alias    = array_get($this->config, $this->index.'.alias', '');
             static::$client = ClientBuilder::create()->setHosts(array_get($this->config, $this->index.'.connection', []))->build();
         }
 
@@ -364,6 +373,120 @@ class Query
     }
 
     /**
+     * 新建索引别名，并把索引指向该别名
+     *
+     * @param  string $aliasName
+     *
+     * @return mixed
+     */
+    public function createAlias($aliasName = '')
+    {
+        $client = $this->getClient();
+        if(empty($aliasName)) {
+            $aliasName = $this->alias;
+        }
+
+        try {
+            return $client->indices()
+                    ->putAlias([
+                        'index' => $this->index,
+                        'name'  => $aliasName
+                    ]);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        } catch (\Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        }
+    }
+    /**
+     * 新建索引别名，并把索引指向该别名
+     *
+     * @param  string $aliasName
+     *
+     * @return mixed
+     */
+    public function isAlias($aliasName)
+    {
+        try {
+            return $this->getClient()->indices()
+                        ->existsAlias([
+                            'index' => $this->index,
+                            'name'  => $aliasName
+                        ]);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        } catch (\Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        }
+    }
+
+    /**
+     * 删除别名
+     *
+     * @param  string $aliasName
+     *
+     * @return mixed
+     */
+    public function deleteAlias($aliasName)
+    {
+        try {
+            return $this->getClient()->indices()
+                        ->deleteAlias([
+                            'index' => $this->index,
+                            'name'  => $aliasName
+                        ]);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        } catch (\Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        }
+    }
+
+    /**
+     * 迁移索引，别名指向新的索引，并取消原索引指向
+     * [Notice：执行前需先创建新的索引及映射, 复制数据到新的索引中；由于 index 关联配置的读取，迁移务必慎重考虑~]
+     *
+     * @param  string $aliasName
+     * @param  string $newIndex
+     *
+     * @return mixed
+     */
+    public function migrateIndex($aliasName, $newIndex)
+    {
+        try {
+            return $this->getClient()->indices()
+                   ->updateAliases([
+                       'body' => [
+                           'actions' => [
+                               [
+                                   'remove' => [
+                                       'index' => $this->index,
+                                       'alias' => $aliasName,
+                                   ],
+                                   'add'    => [
+                                       'index' => $newIndex,
+                                       'alias' => $aliasName,
+                                   ]
+                               ],
+                           ],
+                       ],
+                   ]);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        } catch (\Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        }
+    }
+
+    /**
      * 删除映射
      *
      * @return array
@@ -397,7 +520,7 @@ class Query
         try {
             $client = $this->getClient();
             $params = [
-                'index' => $this->index,
+                'index' => $this->alias ?: $this->index,
                 'type'  => $this->type,
                 'body'  => $this->filterFields($body)
             ];
@@ -425,7 +548,7 @@ class Query
     {
         try {
             return $this->getClient()->update([
-                'index' => $this->index,
+                'index' => $this->alias ?: $this->index,
                 'type'  => $this->type,
                 'id'    => $id,
                 'body'  => [
@@ -462,7 +585,7 @@ class Query
             })->implode(';');
 
             return $client->updateByQuery([
-                'index'     => $this->index,
+                'index'     => $this->alias ?: $this->index,
                 'type'      => $this->type,
                 'body'      => [
                     'query'  => $this->where['query'],
@@ -499,7 +622,7 @@ class Query
             })->implode(';');
 
             return $client->update([
-                'index'     => $this->index,
+                'index'     => $this->alias ?: $this->index,
                 'type'      => $this->type,
                 'id'        => $id,
                 'body'      => [
@@ -537,7 +660,7 @@ class Query
 
         try {
             return $this->getClient()->updateByQuery([
-                'index'     => $this->index,
+                'index'     => $this->alias ?: $this->index,
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
                 'body'      => [
@@ -575,7 +698,7 @@ class Query
 
         try {
             return $this->getClient()->updateByQuery([
-                'index'     => $this->index,
+                'index'     => $this->alias ?: $this->index,
                 'type'      => $this->type,
                 'conflicts' => 'proceed',
                 'body'      => [
@@ -608,7 +731,7 @@ class Query
     {
         try {
             return $this->getClient()->delete([
-                'index' => $this->index,
+                'index' => $this->alias ?: $this->index,
                 'type'  => $this->type,
                 'id'    => $id
             ]);
@@ -634,7 +757,7 @@ class Query
 
         try {
             return $this->getClient()->deleteByQuery([
-                'index' => $this->index,
+                'index' => $this->alias ?: $this->index,
                 'type'  => $this->type,
                 'body'  => $this->where
             ]);
@@ -693,12 +816,12 @@ class Query
 
                 if (!$id) {
                     $params['body'][][$type] = [
-                        '_index' => $this->index,
+                        '_index' => $this->alias ?: $this->index,
                         '_type'  => $this->type
                     ];
                 } else {
                     $params['body'][][$type] = [
-                        '_index' => $this->index,
+                        '_index' => $this->alias ?: $this->index,
                         '_type'  => $this->type,
                         '_id'    => $id
                     ];
@@ -736,7 +859,7 @@ class Query
     {
         try {
             return $this->getClient()->get([
-                'index'  => $this->index,
+                'index'  => $this->alias ?: $this->index,
                 'type'   => $this->type,
                 'id'     => $id,
                 'client' => [
@@ -758,7 +881,7 @@ class Query
     public function search($paging = false)
     {
         $params = [
-            'index' => $this->index,
+            'index' => $this->alias ?: $this->index,
             'type'  => $this->type,
             'body'  => $this->where
         ];
