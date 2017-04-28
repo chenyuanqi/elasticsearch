@@ -885,10 +885,12 @@ class Query
     /**
      * 执行查询
      *
-     * @param  boolean $paging 是否分页
+     * @param  boolean $paging  是否分页
+     * @param  boolean $version 是否显示版本号
+     *
      * @return array
      */
-    public function search($paging = false)
+    public function search($paging = false, $version = false)
     {
         $body   = $this->where;
         $client = $this->getClient();
@@ -897,6 +899,10 @@ class Query
             'type'  => $this->type,
             'body'  => $body
         ];
+        // 是否显示版本号
+        if($version) {
+            $params['body']['version'] = true;
+        }
         // 是否指定字段
         if($this->columns) {
             $params['body']['_source']['includes'] = $this->columns;
@@ -1054,11 +1060,12 @@ class Query
      *
      * @param $field
      * @param $value
-     * @param string $type 类型 (_all, match, multi_match)
+     * @param string $type 类型 (_all, match, match_phrase, match_all, multi_match)
+     * @param array  $extParams 额外参数
      *
      * @return $this
      */
-    public function match($field, $value = '', $type = '_all')
+    public function match($field = '', $value = '', $type = '_all', $extParams = [])
     {
         switch ($type) {
             case 'match':
@@ -1067,6 +1074,33 @@ class Query
                         $field => $value
                     ]
                 ];
+                break;
+
+            case 'match_phrase':
+                $where['query'] = [
+                    'match_phrase' => [
+                        $field => [
+                            'query' => $value,
+                        ]
+                    ]
+                ];
+
+                // 间隔未知单词数量
+                if ($extParams['slop']) {
+                    $where['query']['match_phrase'][$field]['slop'] = $extParams['slop'];
+                }
+                break;
+
+            case 'match_all':
+                $where['query'] = [
+                    'match_all' => []
+                ];
+
+                if($field && $value) {
+                    $where['query']['match_all'] = [
+                        $field => $value
+                    ];
+                }
                 break;
 
             case 'multi_match':
@@ -1082,7 +1116,7 @@ class Query
             default:
                 $where['query'] = [
                     'match' => [
-                        '_all' => $field
+                        '_all' => $value
                     ]
                 ];
                 break;
@@ -1095,16 +1129,42 @@ class Query
     /**
      * 构造 term query 查询条件
      *
+     * @param string       $field
+     * @param string/array $value
+     * @param int          $matchNumber
+     *
+     * @return $this
+     */
+    public function term($field, $value, $matchNumber = 1)
+    {
+        $where['query'] = [
+            'term' => [
+                $field => $value
+            ]
+        ];
+        if (is_array($value)) {
+            $where['query']['term']['minimum_match'] = $matchNumber;
+        }
+        $this->where = array_merge_recursive($this->where, $where);
+
+        return $this;
+    }
+
+    /**
+     * 构造前缀匹配
+     *
      * @param $field
      * @param $value
      *
      * @return $this
      */
-    public function term($field, $value)
+    public function prefix($field, $value)
     {
         $where['query'] = [
-            'term' => [
-                $field => $value
+            'prefix' => [
+                $field => [
+                    'value' => $value
+                ]
             ]
         ];
         $this->where = array_merge_recursive($this->where, $where);
