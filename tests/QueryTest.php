@@ -404,6 +404,148 @@ final class QueryTest extends TestCase
     }
 
     /**
+     * 测试前缀搜索
+     *
+     * @group query-search
+     */
+    public function testPrefixQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->prefix('content', 'con')->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试 bool 搜索
+     *
+     * @group query-search
+     */
+    public function testBoolQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->bool('content', 'test11111')->search();
+        self::assertEquals(1, $result['total']);
+    }
+
+    /**
+     * 测试 range 搜索
+     *
+     * @group query-search
+     */
+    public function testRangeQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->range('score', [1, 9])->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试 where in 搜索
+     *
+     * @group query-search
+     */
+    public function testWhereInQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->whereIn('score', [1, 2, 3])->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试 where not in 搜索
+     *
+     * @group query-search
+     */
+    public function testWhereNotInQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->whereNotIn('score', [1, 2, 3])->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试 where 搜索
+     *
+     * @group query-search
+     */
+    public function testWhereQuery()
+    {
+        echo __METHOD__."\n";
+        $result1 = $this->index->where('title', 'vikey')->search();
+        self::assertEquals(1, $result1['total']);
+
+        $result2 = $this->index->where('score', '>', 3)->search();
+        self::assertGreaterThan(0, $result2['total']);
+
+        $result3 = $this->index->where('score', '<', 5)->search();
+        self::assertGreaterThan(0, $result3['total']);
+
+        $result4 = $this->index->where('content', 'like', 'content%')->search();
+        self::assertGreaterThan(0, $result4['total']);
+    }
+
+    /**
+     * 测试 or where 搜索
+     *
+     * @group query-search
+     */
+    public function testOrWhereQuery()
+    {
+        echo __METHOD__."\n";
+        $result1 = $this->index->where('title', 'vikey')->orWhere('content', 'like', 'test%')->search();
+        self::assertEquals(1, $result1['total']);
+    }
+
+    /**
+     * 测试 where between 搜索
+     *
+     * @group query-search
+     */
+    public function testWhereBetweenQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->whereBetween('score', [1, 5])->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试 where between 搜索
+     *
+     * @group query-search
+     */
+    public function testWhereNotBetweenQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->whereNotBetween('score', [1, 5])->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
+     * 测试 limit 搜索
+     *
+     * @group query-search
+     */
+    public function testLimitQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->limit(0, 1)->search(true);
+        self::assertTrue(isset($result[0]));
+        self::assertFalse(isset($result[1]));
+    }
+
+    /**
+     * 测试 order 搜索
+     *
+     * @group query-search
+     */
+    public function testOrderByQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->orderBy(['score' => 'desc'])->search();
+        self::assertGreaterThan(0, $result['total']);
+    }
+
+    /**
      * 测试根据 ID 删除数据
      *
      * @param string $id
