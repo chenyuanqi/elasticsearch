@@ -163,8 +163,7 @@ class Query
      */
     public function getClient()
     {
-        // 清空原有条件
-        $this->where  = [];
+        $this->init();
 
         $this->config = $this->is_laravel ? \Config::get('elasticsearch') : include(__DIR__.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'elasticsearch.php');
 
@@ -190,6 +189,23 @@ class Query
         }
 
         return static::$client;
+    }
+
+    /**
+     * 初始化
+     */
+    private function init()
+    {
+        // 重置 aggregations
+        $this->aggregations = [];
+
+        // 重置 scroll 参数
+        $this->scroll_size   = null;
+        $this->scroll_expire = null;
+        $this->scroll_type   = null;
+
+        // 重置 where
+        $this->where = [];
     }
 
     /**
@@ -766,6 +782,7 @@ class Query
 
         try {
             $body = $this->where;
+
             return $this->getClient()->deleteByQuery([
                 'index' => $this->alias ?: $this->index,
                 'type'  => $this->type,
@@ -892,12 +909,10 @@ class Query
      */
     public function search($paging = false, $version = false)
     {
-        $body   = $this->where;
-        $client = $this->getClient();
         $params = [
             'index' => $this->alias ?: $this->index,
             'type'  => $this->type,
-            'body'  => $body
+            'body'  => $this->where
         ];
         // 是否显示版本号
         if($version) {
@@ -913,8 +928,8 @@ class Query
         }
         // 是否开启分页
         if($paging) {
-            $params['from'] = $this->offset;
-            $params['size'] = $this->limit;
+            $params['body']['from'] = $this->offset;
+            $params['body']['size'] = $this->limit;
         }
         // 是否开启滚屏或者扫描
         $this->scroll_type   && $params['search_type']  = $this->scroll_type;
@@ -924,18 +939,10 @@ class Query
         if($this->order) {
             $params['body']['sort'] = $this->order;
         }
-        $this->output = $client->search($params);
-        // 如果是滚屏或扫描，结果需再次查询
-        /*
-        if(isset($this->output['_scroll_id'])) {
-            $this->searchByScrollId($this->output['_scroll_id']);
-        }
-        */
+        $this->output = $this->getClient()->search($params);
 
         // 聚合查询结果特殊处理
         if($this->aggregations) {
-            // 重置 aggregations
-            $this->aggregations = [];
             return $this->output['aggregations']['total']['value'];
         }
 
@@ -961,8 +968,9 @@ class Query
     public function searchByScrollId($scroll_id = null)
     {
         if ($scroll_id) {
+            $scroll       = $this->scroll_expire;
             $this->output = $this->getClient()->scroll([
-                "scroll"    => $this->scroll_expire,
+                "scroll"    => $scroll,
                 "scroll_id" => $scroll_id
             ]);
         }
@@ -1209,8 +1217,8 @@ class Query
         $where['query'] = [
             'range' => [
                 $field => [
-                    [$parameter[0] => $range[0]],
-                    [$parameter[1] => $range[1]]
+                    $parameter[0] => $range[0],
+                    $parameter[1] => $range[1]
                 ]
             ]
         ];
@@ -1673,8 +1681,6 @@ class Query
         // 总记录数
         $result['total'] = $this->output['hits']['total'];
         isset($this->output['_scroll_id']) && $result['_scroll_id'] = $this->output['_scroll_id'];
-        // 重置 aggregations
-        $this->aggregations = [];
 
         return $result;
     }
