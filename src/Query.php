@@ -1023,9 +1023,17 @@ class Query
     {
         // 无结果时，自行查询
         if (!isset($this->output['hits']['total'])) {
-            $this->search();
+            $param = [
+                'index' => $this->alias ?: $this->index,
+                'type'  => $this->type,
+                'body'  => $this->where
+            ];
+            $result = $this->getClient()->count($param);
+
+            return isset($result['count']) ? $result['count'] : 0;
         }
-        return isset($this->output['hits']['total']) ? $this->output['hits']['total'] : 0;
+
+        return (int)$this->output['hits']['total'];
     }
 
     /**
