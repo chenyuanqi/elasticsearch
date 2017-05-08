@@ -282,6 +282,23 @@ class Query
     }
 
     /**
+     * 校验 query 是否有效
+     *
+     * @return boolean
+     */
+    public function validateQuery()
+    {
+        $param  = [
+            'index' => $this->alias ?: $this->index,
+            'type'  => $this->type,
+            'body'  => $this->where,
+        ];
+        $result = $this->getClient()->indices()->validateQuery($param);
+
+        return $result['valid'];
+    }
+
+    /**
      * 创建模板 [更新]
      *
      * @param  string $templateName

@@ -387,6 +387,18 @@ final class QueryTest extends TestCase
     }
 
     /**
+     * 测试 query 是否有效
+     *
+     * @group query-search
+     */
+    public function testValidateQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->match('title', '航空', 'match')->term('title', 'vikey')->validateQuery();
+        self::assertFalse($result);
+    }
+
+    /**
      * 测试 queryString 查询
      *
      * @group query-search
