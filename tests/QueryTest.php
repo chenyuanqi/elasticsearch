@@ -42,6 +42,29 @@ final class QueryTest extends TestCase
 
         $result = $this->index->insert($data, $id);
         self::assertTrue($result['created']);
+    }
+
+    /**
+     * 测试写入或覆盖数据
+     *
+     * @param string $id
+     * @param string $title
+     * @param string $content
+     * @param int    $score
+     *
+     * @dataProvider additionProvider
+     * @group        query-create
+     */
+    public function testInsertOrCoverData($id, $title, $content, $score)
+    {
+        echo __METHOD__."\n";
+        $data = [
+            'title'   => $title,
+            'content' => $content,
+            'score'   => $score
+        ];
+
+        $result = $this->index->insertOrCover($data, $id);
         self::assertEquals(0, $result['_shards']['failed']);
     }
 

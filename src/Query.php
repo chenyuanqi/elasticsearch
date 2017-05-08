@@ -542,6 +542,35 @@ class Query
             ];
             $id && $params['id'] = $id;
 
+            return $client->create($params);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        } catch (\Exception $e) {
+            echo $e->getCode() . ': ' . $e->getMessage() . "\n";
+            exit();
+        }
+    }
+
+    /**
+     * 新增或覆盖数据
+     *
+     * @param        $body
+     * @param string $id
+     *
+     * @return mixed
+     */
+    public function insertOrCover($body, $id = '')
+    {
+        try {
+            $client = $this->getClient();
+            $params = [
+                'index' => $this->alias ?: $this->index,
+                'type'  => $this->type,
+                'body'  => $this->filterFields($body)
+            ];
+            $id && $params['id'] = $id;
+
             return $client->index($params);
         } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
@@ -904,10 +933,11 @@ class Query
      *
      * @param  boolean $paging  是否分页
      * @param  boolean $version 是否显示版本号
+     * @param  boolean $explain 是否分析查询语句
      *
      * @return array
      */
-    public function search($paging = false, $version = false)
+    public function search($paging = false, $version = false, $explain = false)
     {
         $params = [
             'index' => $this->alias ?: $this->index,
@@ -917,6 +947,10 @@ class Query
         // 是否显示版本号
         if($version) {
             $params['body']['version'] = true;
+        }
+        // 是否分析查询语句
+        if($explain) {
+            $params['explain'] = true;
         }
         // 是否指定字段
         if($this->columns) {
@@ -944,6 +978,9 @@ class Query
         // 聚合查询结果特殊处理
         if($this->aggregations) {
             return $this->output['aggregations']['total']['value'];
+        } elseif ($explain) {
+            // 分析查询语句不需格式化输出
+            $this->output['hits']['total'] && dd($this->output['hits']['hits']);
         }
 
         return $this->outputFormat();
