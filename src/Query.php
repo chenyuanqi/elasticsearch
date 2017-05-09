@@ -644,7 +644,7 @@ class Query
             $client = $this->getClient();
             $params = $this->filterFields($body);
             $inline = collect($params)->map(function($item, $key) {
-                return "ctx._source.{$key} = {$key}";
+                return "ctx._source.{$key} = params.{$key}";
             })->implode(';');
 
             return $client->updateByQuery([
@@ -654,6 +654,7 @@ class Query
                     'conflicts' => 'proceed',
                     'query'     => $query,
                     'script'    => [
+                        'lang'   => 'painless',
                         'inline' => $inline,
                         'params' => $params,
                     ],
@@ -682,7 +683,7 @@ class Query
             $client = $this->getClient();
             $params = $this->filterFields($body);
             $inline = collect($params)->map(function($item, $key) {
-                return "ctx._source.{$key} = {$key}";
+                return "ctx._source.{$key} = params.{$key}";
             })->implode(';');
 
             return $client->update([
@@ -692,6 +693,7 @@ class Query
                 'body'  => [
                     'conflicts' => 'proceed',
                     'script'    => [
+                        'lang'   => 'painless',
                         'inline' => $inline,
                         'params' => $params,
                     ],
@@ -734,7 +736,8 @@ class Query
                                 'conflicts' => 'proceed',
                                 'query'     => $query,
                                 'script'    => [
-                                    'inline' => "ctx._source.{$field} += count",
+                                    'lang'   => 'painless',
+                                    'inline' => "ctx._source.{$field} += params.count",
                                     'params' => [
                                         'count' => $value,
                                     ],
@@ -775,7 +778,8 @@ class Query
                                 'conflicts' => 'proceed',
                                 'query'     => $query,
                                 'script'    => [
-                                    'inline' => "ctx._source.{$field} -= count",
+                                    'lang'   => 'painless',
+                                    'inline' => "ctx._source.{$field} -= params.count",
                                     'params' => [
                                         'count' => $value,
                                     ],
