@@ -5,9 +5,9 @@ This package depends on "elasticsearch/elasticsearch" and it provides a unified 
 The following dependencies are needed for the listed search drivers:
 ```json
 {
-"php": ">=7.0",
+"php": ">=5.6",
 "illuminate/support": "~5.1",
-"elasticsearch/elasticsearch": "~5.0"
+"elasticsearch/elasticsearch": "~2.0"
 }
 ```
 ## Structure 
