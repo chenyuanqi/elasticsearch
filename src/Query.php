@@ -118,6 +118,13 @@ class Query
     protected $scroll_type;
 
     /**
+     * 格式化输出是否包含 total、_id
+     *
+     * @var boolean
+     */
+    protected $pretty = false;
+
+    /**
      * 获取配置，建立链接
      *
      * @param boolean $is_laravel
@@ -152,6 +159,13 @@ class Query
     public function type($type = null)
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    public function pretty()
+    {
+        $this->pretty = true;
 
         return $this;
     }
@@ -1740,12 +1754,16 @@ class Query
         }
         // 格式化处理
         $result = collect($this->output['hits']['hits'])->map(function ($item){
-            $item['_source']['_id'] = $item['_id'];
+            if (!$this->pretty) {
+                $item['_source']['_id'] = $item['_id'];
+            }
 
             return $item['_source'];
         })->toArray();
         // 总记录数
-        $result['total'] = $this->output['hits']['total'];
+        if (!$this->pretty) {
+            $result['total'] = $this->output['hits']['total'];
+        }
         isset($this->output['_scroll_id']) && $result['_scroll_id'] = $this->output['_scroll_id'];
 
         return $result;
