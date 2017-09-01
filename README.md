@@ -81,6 +81,12 @@ Search::deleteMapping();
 Search::index('test')->type('test');
 ```
 Notice: Here index and type has default value.
+
+Whatever, you can also give it your setting that according to config/elasticsearch.php.
+```php
+Search::setConfig($config);
+```
+
 ### 4、search for insert data 
 ```php
 $data = [
@@ -255,6 +261,15 @@ Search::toCurl();
 ```
 Notice: you must output the message after search.  
 
+Wow, you can make any custom search like this example.
+```php
+Search::searchByRaw([
+  'body' => [
+      'query' => ['term' => ['name' => '天天']],
+  ],
+  'size' => 1,
+]);
+```
 ## Others Usage
 You know, it uses the facade design pattern above all of [laravel usage](https://github.com/chenyuanqi/elasticsearch#laravel-usage).  
 So in here, just replace the Search object like that:

@@ -163,9 +163,28 @@ class Query
         return $this;
     }
 
+    /**
+     * 设置美化选项
+     *
+     * @return $this
+     */
     public function pretty()
     {
         $this->pretty = true;
+
+        return $this;
+    }
+
+    /**
+     * 单独设置配置
+     *
+     * @param  array $config 配置项（参考 config/elasticsearch.php ）
+     *
+     * @return $this
+     */
+    public function setConfig($config = [])
+    {
+        $this->config = $config;
 
         return $this;
     }
@@ -179,7 +198,9 @@ class Query
     {
         $this->init();
 
-        $this->config = $this->is_laravel ? \Config::get('elasticsearch') : include(__DIR__.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'elasticsearch.php');
+        if (!$this->config) {
+            $this->config = $this->is_laravel ? \Config::get('elasticsearch') : include(__DIR__.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'elasticsearch.php');
+        }
 
         // 默认索引及类型判断
         if (null === $this->index) {
@@ -961,6 +982,22 @@ class Query
             echo $e->getCode() . ': ' . $e->getMessage() . "\n";
             exit();
         }
+    }
+
+    /**
+     * 自定义条件搜索
+     *
+     * @param  array $params 搜索条件（不需要 index、type 参数）
+     *
+     * @return array
+     */
+    public function searchByRaw($params = [])
+    {
+        $params['index'] = $this->alias ?: $this->index;
+        $params['type']  = $this->type;
+        $this->output    = $this->getClient()->search($params);
+
+        return $this->outputFormat();
     }
 
     /**
@@ -1749,7 +1786,7 @@ class Query
      */
     public function outputFormat()
     {
-        if (0 === count($this->output['hits']['hits'])) {
+        if (!isset($this->output['_scroll_id']) && 0 === count($this->output['hits']['hits'])) {
             return [];
         }
         // 格式化处理

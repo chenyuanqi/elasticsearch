@@ -25,7 +25,7 @@
         "elasticsearch/elasticsearch": "~2.0"
     },
     "require-dev": {
-        "phpunit/phpunit"     : "@stable"
+        "phpunit/phpunit": "@stable"
     },
     "suggest": {
         "elasticsearch/elasticsearch": "Required for ElasticSearch driver."

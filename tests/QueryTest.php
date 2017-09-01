@@ -556,6 +556,23 @@ final class QueryTest extends TestCase
     }
 
     /**
+     * 测试 search by raw 搜索
+     *
+     * @group query-search
+     */
+    public function testSearchByRawQuery()
+    {
+        echo __METHOD__."\n";
+        $result = $this->index->->searchByRaw([
+            'body' => [
+                'query' => ['term' => ['name' => '天天']],
+            ],
+            'size' => 1,
+        ]);
+        self::assertEquals(1, $result['total']);
+    }
+
+    /**
      * 测试 limit 搜索
      *
      * @group query-search
