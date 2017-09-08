@@ -576,6 +576,29 @@ class Query
     }
 
     /**
+     * 刷新文档（用于近实时搜索）
+     *
+     * @param  boolean $force 是否强行刷新
+     *
+     * @return mixed
+     */
+    public function refresh($force = false)
+    {
+        try {
+            return $this->getClient()->indices()->refresh([
+                'index' => $this->index,
+                'force' => $force
+            ]);
+        } catch (\Elasticsearch\Common\Exceptions\Missing404Exception $e) {
+            echo $e->getCode().': '.$e->getMessage()."\n";
+            exit();
+        } catch (\Exception $e) {
+            echo $e->getCode().': '.$e->getMessage()."\n";
+            exit();
+        }
+    }
+
+    /**
      * 新增数据
      *
      * @param $body
